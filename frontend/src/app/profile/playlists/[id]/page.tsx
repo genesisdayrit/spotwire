@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 
 export default function PlaylistDetails() {
   const { id } = useParams(); // Get the playlist ID from the route
+  const router = useRouter(); // Initialize the router
   const [token, setToken] = useState<string | null>(null);
   const [tracks, setTracks] = useState<any[]>([]);
   const [playlistName, setPlaylistName] = useState<string>('');
@@ -36,6 +37,14 @@ export default function PlaylistDetails() {
     });
   };
 
+  const handleDownloadPlaylist = () => {
+    const playlistUrl = `https://open.spotify.com/playlist/${id}`;
+    const downloadCommand = `spotdl download ${playlistUrl}`;
+    navigator.clipboard.writeText(downloadCommand).then(() => {
+      alert('Playlist download command copied to clipboard!');
+    });
+  };
+
   if (!token) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-900 text-white">
@@ -45,8 +54,31 @@ export default function PlaylistDetails() {
   }
 
   return (
-    <div className="p-6 bg-gray-900 text-white min-h-screen">
-      <h1 className="text-3xl mb-6">{playlistName}</h1>
+    <div className="p-6 bg-gray-900 text-white min-h-screen relative">
+      {/* Header Section */}
+      <div className="flex items-center justify-center relative mb-6">
+        {/* Back Button */}
+        <button
+          onClick={() => router.push('/profile')} // Navigate back to /profile
+          className="absolute left-0 bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700"
+        >
+          ← Back
+        </button>
+
+        {/* Playlist Title */}
+        <h1 className="text-3xl font-semibold">{playlistName}</h1>
+      </div>
+
+      {/* Download Playlist Button */}
+      <div className="mb-6">
+        <button
+          onClick={handleDownloadPlaylist}
+          className="px-6 py-2 bg-green-500 text-black rounded-lg hover:bg-green-600"
+        >
+          Download Playlist
+        </button>
+      </div>
+
       <table className="table-auto w-full text-left border-collapse border border-gray-700">
         <thead>
           <tr className="bg-gray-800 text-white">

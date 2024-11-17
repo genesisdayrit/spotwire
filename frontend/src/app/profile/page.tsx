@@ -9,7 +9,8 @@ export default function Profile() {
   const [token, setToken] = useState<string | null>(null);
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [likedSongs, setLikedSongs] = useState<any[]>([]);
-  const [showPlaylists, setShowPlaylists] = useState(false); // Toggle for playlists
+  const [showPlaylists, setShowPlaylists] = useState(false);
+  const [showLibrary, setShowLibrary] = useState(false);
 
   useEffect(() => {
     const storedToken = localStorage.getItem('spotify_access_token');
@@ -20,17 +21,25 @@ export default function Profile() {
 
   useEffect(() => {
     if (token && showPlaylists) {
-      // Fetch playlists if the section is toggled
       fetch(`/api/get-playlists?token=${token}`)
         .then((res) => res.json())
         .then((data) => setPlaylists(data.items || []))
         .catch((err) => console.error('Error fetching playlists:', err));
     }
-  }, [token, showPlaylists]); // Refetch data when toggle changes
+  }, [token, showPlaylists]);
+
+  useEffect(() => {
+    if (token && showLibrary) {
+      fetch(`/api/get-liked-songs?token=${token}&limit=10`)
+        .then((res) => res.json())
+        .then((data) => setLikedSongs(data.items || []))
+        .catch((err) => console.error('Error fetching liked songs:', err));
+    }
+  }, [token, showLibrary]);
 
   const handleLogout = () => {
-    localStorage.removeItem('spotify_access_token'); // Clear token from storage
-    router.push('/'); // Redirect to home page
+    localStorage.removeItem('spotify_access_token');
+    router.push('/');
   };
 
   return (
@@ -45,14 +54,51 @@ export default function Profile() {
         </button>
       </div>
 
-      {/* Library Section with Route */}
+      {/* Library Section with Toggle */}
       <div className="mb-10">
-        <Link href="/profile/library">
-          <div className="flex items-center justify-between cursor-pointer bg-gray-800 px-4 py-3 rounded-lg hover:bg-gray-700">
-            <h2 className="text-xl font-bold">Library</h2>
-            <span className="transform transition-transform">➔</span>
+  <div className="flex items-center justify-between bg-gray-800 px-4 py-3 rounded-lg hover:bg-gray-700">
+    {/* Clickable Library Text */}
+    <Link href="/profile/library">
+      <h2 className="text-xl font-bold cursor-pointer">Library</h2>
+    </Link>
+    {/* Toggle Button */}
+    <span
+      onClick={() => setShowLibrary(!showLibrary)}
+      className={`transform transition-transform cursor-pointer ${
+        showLibrary ? 'rotate-180' : ''
+      }`}
+    >
+      ▼
+    </span>
+        </div>
+        {showLibrary && (
+          <div className="mt-4">
+            {likedSongs.length > 0 ? (
+              <table className="table-auto w-full bg-gray-800 rounded-lg text-left">
+                <thead>
+                  <tr>
+                    <th className="px-4 py-2">Title</th>
+                    <th className="px-4 py-2">Artist</th>
+                    <th className="px-4 py-2">Album</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {likedSongs.map((item) => (
+                    <tr key={item.track.id} className="hover:bg-gray-700">
+                      <td className="px-4 py-2">{item.track.name || 'Unknown Title'}</td>
+                      <td className="px-4 py-2">
+                        {item.track.artists?.map((a) => a.name).join(', ') || 'Unknown Artist'}
+                      </td>
+                      <td className="px-4 py-2">{item.track.album?.name || 'Unknown Album'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p className="text-gray-400">No liked songs found.</p>
+            )}
           </div>
-        </Link>
+        )}
       </div>
 
       {/* Playlists Section with Toggle */}

@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation'; // Import the useRouter hook
 
 export default function Library() {
+  const router = useRouter(); // Initialize the router
   const [token, setToken] = useState<string | null>(null);
   const [likedSongs, setLikedSongs] = useState<any[]>([]);
   const [filteredSongs, setFilteredSongs] = useState<any[]>([]);
@@ -102,8 +104,16 @@ export default function Library() {
   }, []);
 
   return (
-    <div className="p-6 bg-gray-900 text-white min-h-screen">
-      <h1 className="text-3xl mb-6">Your Library</h1>
+    <div className="p-6 bg-gray-900 text-white min-h-screen relative">
+      {/* Back Button */}
+      <button
+        onClick={() => router.push('/profile')} // Navigate back to /profile
+        className="absolute top-6 left-6 bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700"
+      >
+        ← Back
+      </button>
+
+      <h1 className="text-3xl mb-6 text-center">Your Library</h1>
 
       {/* Search Bar */}
       <div className="mb-6">
