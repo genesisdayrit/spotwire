@@ -9,6 +9,7 @@ export default function Library() {
   const [searchQuery, setSearchQuery] = useState('');
   const [nextPage, setNextPage] = useState<string | null>(null); // For pagination
   const [isFetchingAll, setIsFetchingAll] = useState(false); // State to track "Fetch All"
+  const [showBackToTop, setShowBackToTop] = useState(false); // State for back-to-top button
 
   useEffect(() => {
     const storedToken = localStorage.getItem('spotify_access_token');
@@ -83,6 +84,22 @@ export default function Library() {
       alert('Copied to clipboard!');
     });
   };
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowBackToTop(window.scrollY > 200); // Show button after scrolling down 200px
+    };
+
+    window.addEventListener('scroll', handleScroll);
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
 
   return (
     <div className="p-6 bg-gray-900 text-white min-h-screen">
@@ -176,6 +193,16 @@ export default function Library() {
             Load More
           </button>
         </div>
+      )}
+
+      {/* Back to Top Button */}
+      {showBackToTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-8 right-8 bg-green-500 text-black px-4 py-2 rounded-full shadow-lg hover:bg-green-600"
+        >
+          ↑ Top
+        </button>
       )}
     </div>
   );
