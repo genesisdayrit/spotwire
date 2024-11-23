@@ -27,7 +27,7 @@ export default function Profile() {
   useEffect(() => {
     if (token) {
       // Fetch Top Tracks
-      fetch(`/api/top-tracks?token=${token}`)
+      fetch(`/api/top-tracks?token=${token}&limit=12`)
         .then((res) => {
           if (!res.ok) {
             throw new Error(`Failed to fetch top tracks: ${res.status}`);
@@ -80,9 +80,12 @@ export default function Profile() {
       </div>
 
       {/* Top Tracks Section */}
-      {/* Top Tracks Section */}
       <div className="mb-10">
-        <h2 className="text-2xl font-bold mb-4">Top Tracks This Week</h2>
+        <h2 className="text-2xl font-bold mb-4">
+          <a href="/profile/top-tracks" className="text-green-400 hover:underline">
+            Top Tracks This Week
+          </a>
+        </h2>
         {topTracks.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {topTracks.map((track) => (
