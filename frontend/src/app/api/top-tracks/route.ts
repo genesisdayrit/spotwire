@@ -10,7 +10,7 @@ export async function GET(req: Request) {
 
   try {
     // Construct the correct URL for top tracks
-    const url = 'https://api.spotify.com/v1/me/top/tracks?time_range=short_term&limit=10';
+    const url = 'https://api.spotify.com/v1/me/top/tracks?time_range=short_term&limit=12';
 
     const response = await fetch(url, {
       headers: {
