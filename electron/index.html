@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>spotwire</title>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background-color: #1a202c; /* Tailwind's gray-900 */
+      color: white;
+      font-family: sans-serif;
+    }
+    .container {
+      text-align: center;
+    }
+    .btn {
+      display: inline-block;
+      margin: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      background-color: #48bb78; /* Tailwind's green-500 */
+      border-radius: 0.5rem;
+      text-decoration: none;
+      color: white;
+      font-size: 1.125rem;
+      transition: background-color 0.2s;
+    }
+    .btn:hover {
+      background-color: #38a169; /* Tailwind's green-600 */
+    }
+    h1 {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>spotwire</h1>
+    <a id="spotify-login" class="btn" href="#">Log in with Spotify</a>
+    <a id="instructions" class="btn" href="instructions.html">Instructions</a>
+  </div>
+  <script src="renderer.js"></script>
+</body>
+</html>
+
