@@ -19,6 +19,7 @@ export default function Profile() {
     if (storedToken) {
       setToken(storedToken);
     } else {
+      console.warn('No token found, redirecting to login.');
       router.push('/'); // Redirect to login if no token is found
     }
   }, [router]);
@@ -26,6 +27,8 @@ export default function Profile() {
   // Fetch data when token is available
   useEffect(() => {
     if (token) {
+      console.log('Fetching data with token:', token);
+
       // Fetch Top Tracks
       fetch(`/api/top-tracks?token=${token}&limit=12`)
         .then((res) => {
@@ -45,7 +48,13 @@ export default function Profile() {
           }
           return res.json();
         })
-        .then((data) => setPlaylists(data.items || []))
+        .then((data) => {
+          const validPlaylists = (data.items || []).filter(
+            (playlist) => playlist !== null && playlist.name && playlist.images
+          );
+          console.log('Valid Playlists:', validPlaylists);
+          setPlaylists(validPlaylists);
+        })
         .catch((err) => console.error('Error fetching playlists:', err));
 
       // Fetch Liked Songs
@@ -63,6 +72,7 @@ export default function Profile() {
 
   const handleLogout = () => {
     localStorage.removeItem('spotify_access_token');
+    console.log('Logged out, redirecting to login page.');
     router.push('/');
   };
 
@@ -197,12 +207,14 @@ export default function Profile() {
                   className="bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:scale-105 transition-transform"
                 >
                   <img
-                    src={playlist.images[0]?.url || ''}
-                    alt={playlist.name}
+                    src={playlist.images[0]?.url || '/placeholder-image.png'}
+                    alt={playlist.name || 'Unknown Playlist'}
                     className="w-full h-40 object-cover"
                   />
                   <div className="p-4">
-                    <h2 className="text-lg font-bold truncate">{playlist.name}</h2>
+                    <h2 className="text-lg font-bold truncate">
+                      {playlist.name || 'Unnamed Playlist'}
+                    </h2>
                   </div>
                 </Link>
               ))
@@ -215,4 +227,3 @@ export default function Profile() {
     </div>
   );
 }
-

@@ -5,6 +5,7 @@ export async function GET(req: Request) {
   const token = searchParams.get('token');
 
   if (!token) {
+    console.error('No token provided');
     return NextResponse.json({ error: 'Missing token' }, { status: 400 });
   }
 
@@ -16,14 +17,16 @@ export async function GET(req: Request) {
     });
 
     const data = await response.json();
+    console.log('Spotify API Response:', data);
+
     if (!response.ok) {
+      console.error('Spotify API Error:', data);
       return NextResponse.json(data, { status: response.status });
     }
 
     return NextResponse.json(data);
   } catch (error) {
+    console.error('API Fetch Error:', error);
     return NextResponse.json({ error: 'Failed to fetch playlists' }, { status: 500 });
   }
 }
-
-
