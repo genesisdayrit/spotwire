@@ -2,3 +2,81 @@
 venv/
 downloads/
 *.mp3
+
+# Node.js dependencies
+/electron/node_modules
+/.pnp
+.pnp.js
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build output
+/dist
+/out
+/build
+*.build.log
+
+# Electron-packager and Electron-builder artifacts
+/SpotWire-darwin-x64
+/SpotWire-win32-ia32
+/SpotWire-linux-x64
+/SpotWire*.zip
+/SpotWire*.dmg
+/*.exe
+/*.app
+/*.snap
+/*.deb
+/*.rpm
+
+# Debug files
+*.pid
+*.pid.lock
+*.sublime-project
+*.sublime-workspace
+.idea/
+.vscode/
+*.swp
+*.swo
+*.bak
+*.tmp
+*.temp
+
+# Compiled files
+*.pyc
+*.pyo
+*.exe
+*.class
+
+# Coverage reports
+coverage/
+*.lcov
+*.lcov.info
+
+# Static files and generated assets
+/renderer/styles/output.css
+
+# Miscellaneous
+*.log
+*.tgz
+*.lock-wscript
+*.eslintcache
+.npmrc
+.yarn-integrity
+
