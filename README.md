@@ -1,6 +1,6 @@
 # spotwire
 
-a local interface to help you download your spotify music
+a local interface to help you download your spotify music, extending [spotDL](https://github.com/spotDL/spotify-downloader)
 
 How to use:
 1. clone repo
