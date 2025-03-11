@@ -1,23 +1,150 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>Spotwire Electron</title>
-    <!-- Load React and ReactDOM from CDN -->
+
+    <!-- Simple CSS for a dark navy background, card-based layout, and new header/search bar -->
+    <style>
+      /* Global body styling */
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #1e293b; /* Dark navy */
+        color: #fff;
+        font-family: sans-serif;
+      }
+
+      /* Utility container for Home/Instructions pages */
+      .container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        text-align: center;
+        padding: 1rem;
+      }
+
+      /* Large title styling */
+      .title {
+        font-size: 3rem;
+        font-weight: bold;
+        margin-bottom: 2rem;
+      }
+
+      /* Buttons (mimic Tailwind's green style) */
+      .button {
+        display: inline-block;
+        padding: 0.75rem 1.5rem;
+        background-color: #22c55e; /* green-500 */
+        border-radius: 0.5rem;
+        font-size: 1.125rem; /* ~ text-lg */
+        font-weight: 500;
+        margin-bottom: 1rem;
+        text-decoration: none;
+        color: #fff;
+        transition: background-color 0.2s ease-in-out;
+      }
+      .button:hover {
+        background-color: #16a34a; /* green-600 */
+      }
+
+      /* Profile page container */
+      .profile-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        min-height: 100vh;
+        padding: 1rem;
+      }
+
+      /* Header row: "Profile" text on left, gear on right */
+      .profile-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto 1rem; /* center horizontally, 1rem bottom margin */
+      }
+
+      .profile-title {
+        font-size: 2rem;
+        font-weight: bold;
+        margin: 0;
+      }
+
+      /* Gear icon on the top right */
+      .settings-icon {
+        cursor: pointer;
+        font-size: 1.75rem;
+      }
+
+      /* Search bar row */
+      .search-container {
+        display: flex;
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto 2rem; /* center horizontally, 2rem bottom margin */
+      }
+
+      .search-input {
+        flex: 1;
+        padding: 0.5rem 1rem;
+        border-radius: 0.25rem;
+        border: none;
+        outline: none;
+        font-size: 1rem;
+      }
+
+      /* Playlist grid */
+      .playlist-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto; /* center horizontally */
+      }
+
+      .playlist-card {
+        background-color: #2a3344; /* slightly lighter than background for contrast */
+        border-radius: 0.5rem;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .playlist-image {
+        width: 100%;
+        height: auto;
+        border-radius: 0.25rem;
+        margin-bottom: 0.75rem;
+        object-fit: cover;
+      }
+
+      .playlist-name {
+        font-weight: 600;
+        text-align: center;
+      }
+    </style>
+
+    <!-- React + ReactDOM + Babel (for in-browser JSX) -->
     <script crossorigin src="https://unpkg.com/react@17/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
-    <!-- Babel for in-browser JSX transformation (development only) -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   </head>
   <body>
     <div id="app"></div>
+
     <script type="text/babel">
       const { useEffect, useState } = React;
 
-      // Generate the Spotify login URL using env variables if available.
+      // Generate Spotify Login URL
       function generateSpotifyLoginUrl() {
-        // Accessing process.env is possible here because nodeIntegration is enabled.
         const clientId = process.env.SPOTIFY_CLIENT_ID || 'YOUR_SPOTIFY_CLIENT_ID';
         const redirectUri = process.env.SPOTIFY_REDIRECT_URI || 'spotwire://callback';
         const scope = [
@@ -41,18 +168,20 @@
           "user-read-email",
           "user-read-private",
         ];
+
         const params = new URLSearchParams({
           client_id: clientId,
           response_type: "code",
           redirect_uri: redirectUri,
           scope: scope.join(" "),
         });
+
         return `https://accounts.spotify.com/authorize?${params.toString()}`;
       }
 
+      // Home Page
       function Home() {
         useEffect(() => {
-          // Check if we already have an access token stored.
           const token = localStorage.getItem('spotify_access_token');
           if (token) {
             window.location.hash = '#profile';
@@ -70,51 +199,98 @@
         }
 
         return (
-          <div style={{ textAlign: 'center', marginTop: '100px' }}>
-            <h1>spotwire</h1>
-            <button onClick={handleLogin}>Login with Spotify</button>
+          <div className="container">
+            <h1 className="title">spotwire</h1>
+            <button onClick={handleLogin} className="button">Log in with Spotify</button>
+            <a href="#instructions" className="button">Instructions</a>
           </div>
         );
       }
 
+      // Instructions Page
+      function Instructions() {
+        return (
+          <div className="container">
+            <h2 className="title">Instructions</h2>
+            <p style={{ maxWidth: '600px', marginBottom: '1rem' }}>
+              Here you can add instructions for your Electron app, or anything else you want.
+            </p>
+            <a href="#" className="button">Back Home</a>
+          </div>
+        );
+      }
+
+      // Profile Page
       function Profile() {
         const [playlists, setPlaylists] = useState([]);
         const [loading, setLoading] = useState(true);
+        const [searchTerm, setSearchTerm] = useState("");
         const accessToken = localStorage.getItem('spotify_access_token');
 
         useEffect(() => {
           if (accessToken) {
             fetch('https://api.spotify.com/v1/me/playlists', {
-              headers: {
-                'Authorization': `Bearer ${accessToken}`
-              }
+              headers: { Authorization: `Bearer ${accessToken}` },
             })
-            .then(response => response.json())
-            .then(data => {
-              setPlaylists(data.items || []);
-              setLoading(false);
-            })
-            .catch(error => {
-              console.error("Error fetching playlists", error);
-              setLoading(false);
-            });
+              .then(res => res.json())
+              .then(data => {
+                setPlaylists(data.items || []);
+                setLoading(false);
+              })
+              .catch(err => {
+                console.error('Error fetching playlists', err);
+                setLoading(false);
+              });
           }
         }, [accessToken]);
 
+        // Filter playlists by name based on searchTerm
+        const filteredPlaylists = playlists.filter(playlist =>
+          playlist.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
         return (
-          <div style={{ textAlign: 'center', marginTop: '100px' }}>
-            <h1>Profile Page</h1>
-            <p>You are logged in with Spotify.</p>
+          <div className="profile-container">
+            {/* Header row with "Profile" on left, gear on right */}
+            <div className="profile-header">
+              <h1 className="profile-title">your spotify profile</h1>
+              <span className="settings-icon" title="Settings">⚙️</span>
+            </div>
+
+            {/* Search bar row */}
+            <div className="search-container">
+              <input
+                type="text"
+                className="search-input"
+                placeholder="Search playlists..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+              />
+            </div>
+
             {loading ? (
               <p>Loading playlists...</p>
-            ) : playlists.length > 0 ? (
-              <ul style={{ listStyle: 'none' }}>
-                {playlists.map(playlist => (
-                  <li key={playlist.id}>
-                    <strong>{playlist.name}</strong>
-                  </li>
-                ))}
-              </ul>
+            ) : filteredPlaylists.length > 0 ? (
+              <div className="playlist-grid">
+                {filteredPlaylists.map(playlist => {
+                  // Use the first image if available, otherwise a placeholder
+                  const imageUrl =
+                    playlist.images && playlist.images.length > 0
+                      ? playlist.images[0].url
+                      : 'https://via.placeholder.com/300?text=No+Image';
+
+                  return (
+                    <div key={playlist.id} className="playlist-card">
+                      <img
+                        src={imageUrl}
+                        alt={playlist.name}
+                        className="playlist-image"
+                      />
+                      <div className="playlist-name">{playlist.name}</div>
+                    </div>
+                  );
+                })}
+              </div>
             ) : (
               <p>No playlists found.</p>
             )}
@@ -122,6 +298,7 @@
         );
       }
 
+      // Simple Router
       function App() {
         const [page, setPage] = useState(window.location.hash);
 
@@ -131,10 +308,17 @@
           return () => window.removeEventListener('hashchange', onHashChange);
         }, []);
 
-        return page === '#profile' ? <Profile /> : <Home />;
+        switch (page) {
+          case '#profile':
+            return <Profile />;
+          case '#instructions':
+            return <Instructions />;
+          default:
+            return <Home />;
+        }
       }
 
-      // Listen for the access token sent from the main process.
+      // Listen for the access token from the main process
       if (window.require) {
         const { ipcRenderer } = window.require('electron');
         ipcRenderer.on('access-token', (event, token) => {
