@@ -227,12 +227,29 @@
         const [searchTerm, setSearchTerm] = useState("");
         const accessToken = localStorage.getItem('spotify_access_token');
 
+        // Helper function to log the user out
+        function handleTokenExpiration() {
+          localStorage.removeItem('spotify_access_token');
+          // Optionally, you could notify the user that their session expired.
+          window.location.hash = ''; // Redirect to the home/login page
+        }
+
         useEffect(() => {
           if (accessToken) {
             fetch('https://api.spotify.com/v1/me/playlists', {
               headers: { Authorization: `Bearer ${accessToken}` },
             })
-              .then(res => res.json())
+              .then(res => {
+                // Check if the token has expired or is unauthorized
+                if (!res.ok) {
+                  if (res.status === 401) {
+                    // Token expired, clear token and redirect
+                    handleTokenExpiration();
+                  }
+                  throw new Error('Failed to fetch playlists');
+                }
+                return res.json();
+              })
               .then(data => {
                 setPlaylists(data.items || []);
                 setLoading(false);
