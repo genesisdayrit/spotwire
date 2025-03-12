@@ -45,6 +45,7 @@
         text-decoration: none;
         color: #fff;
         transition: background-color 0.2s ease-in-out;
+        cursor: pointer;
       }
       .button:hover {
         background-color: #16a34a; /* green-600 */
@@ -116,6 +117,11 @@
         display: flex;
         flex-direction: column;
         align-items: center;
+        cursor: pointer;
+        transition: transform 0.1s ease-in-out;
+      }
+      .playlist-card:hover {
+        transform: scale(1.02);
       }
 
       .playlist-image {
@@ -129,6 +135,22 @@
       .playlist-name {
         font-weight: 600;
         text-align: center;
+      }
+
+      /* Table styling for playlist details */
+      table {
+        width: 100%;
+        max-width: 1200px;
+        margin: 1rem auto;
+        border-collapse: collapse;
+      }
+      th, td {
+        padding: 0.75rem;
+        border-bottom: 1px solid #3e4c59;
+        text-align: left;
+      }
+      th {
+        background-color: #2a3344;
       }
     </style>
 
@@ -220,17 +242,16 @@
         );
       }
 
-      // Profile Page
+      // Profile Page - Display user's playlists
       function Profile() {
         const [playlists, setPlaylists] = useState([]);
         const [loading, setLoading] = useState(true);
         const [searchTerm, setSearchTerm] = useState("");
         const accessToken = localStorage.getItem('spotify_access_token');
 
-        // Helper function to log the user out
+        // Helper function to log the user out on token expiration
         function handleTokenExpiration() {
           localStorage.removeItem('spotify_access_token');
-          // Optionally, you could notify the user that their session expired.
           window.location.hash = ''; // Redirect to the home/login page
         }
 
@@ -240,10 +261,8 @@
               headers: { Authorization: `Bearer ${accessToken}` },
             })
               .then(res => {
-                // Check if the token has expired or is unauthorized
                 if (!res.ok) {
                   if (res.status === 401) {
-                    // Token expired, clear token and redirect
                     handleTokenExpiration();
                   }
                   throw new Error('Failed to fetch playlists');
@@ -266,15 +285,18 @@
           playlist.name.toLowerCase().includes(searchTerm.toLowerCase())
         );
 
+        // Navigate to the playlist detail view on card click
+        function handlePlaylistClick(playlistId) {
+          window.location.hash = `#playlist/${playlistId}`;
+        }
+
         return (
           <div className="profile-container">
-            {/* Header row with "Profile" on left, gear on right */}
             <div className="profile-header">
               <h1 className="profile-title">your spotify profile</h1>
               <span className="settings-icon" title="Settings">⚙️</span>
             </div>
 
-            {/* Search bar row */}
             <div className="search-container">
               <input
                 type="text"
@@ -290,14 +312,18 @@
             ) : filteredPlaylists.length > 0 ? (
               <div className="playlist-grid">
                 {filteredPlaylists.map(playlist => {
-                  // Use the first image if available, otherwise a placeholder
                   const imageUrl =
                     playlist.images && playlist.images.length > 0
                       ? playlist.images[0].url
                       : 'https://via.placeholder.com/300?text=No+Image';
 
                   return (
-                    <div key={playlist.id} className="playlist-card">
+                    <div
+                      key={playlist.id}
+                      className="playlist-card"
+                      onClick={() => handlePlaylistClick(playlist.id)}
+                      title="Click to view tracks"
+                    >
                       <img
                         src={imageUrl}
                         alt={playlist.name}
@@ -315,6 +341,83 @@
         );
       }
 
+      // New Component: PlaylistDetail - Display tracks of a selected playlist
+      function PlaylistDetail({ playlistId }) {
+        const [tracks, setTracks] = useState([]);
+        const [loading, setLoading] = useState(true);
+        const accessToken = localStorage.getItem('spotify_access_token');
+
+        // Helper function to handle token expiration
+        function handleTokenExpiration() {
+          localStorage.removeItem('spotify_access_token');
+          window.location.hash = ''; // Redirect to home/login page
+        }
+
+        useEffect(() => {
+          if (accessToken && playlistId) {
+            fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
+              headers: { Authorization: `Bearer ${accessToken}` },
+            })
+              .then(res => {
+                if (!res.ok) {
+                  if (res.status === 401) {
+                    handleTokenExpiration();
+                  }
+                  throw new Error('Failed to fetch tracks');
+                }
+                return res.json();
+              })
+              .then(data => {
+                setTracks(data.items || []);
+                setLoading(false);
+              })
+              .catch(err => {
+                console.error('Error fetching tracks', err);
+                setLoading(false);
+              });
+          }
+        }, [accessToken, playlistId]);
+
+        return (
+          <div className="profile-container">
+            <div className="profile-header">
+              <h1 className="profile-title">Playlist Tracks</h1>
+              <span className="button" onClick={() => window.location.hash = '#profile'}>
+                Back to Profile
+              </span>
+            </div>
+            {loading ? (
+              <p>Loading tracks...</p>
+            ) : tracks.length > 0 ? (
+              <table>
+                <thead>
+                  <tr>
+                    <th>Track Name</th>
+                    <th>Artist</th>
+                    <th>Album</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tracks.map((item, index) => {
+                    const track = item.track;
+                    if (!track) return null;
+                    return (
+                      <tr key={track.id || index}>
+                        <td>{track.name}</td>
+                        <td>{track.artists.map(artist => artist.name).join(', ')}</td>
+                        <td>{track.album.name}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            ) : (
+              <p>No tracks found for this playlist.</p>
+            )}
+          </div>
+        );
+      }
+
       // Simple Router
       function App() {
         const [page, setPage] = useState(window.location.hash);
@@ -324,6 +427,13 @@
           window.addEventListener('hashchange', onHashChange);
           return () => window.removeEventListener('hashchange', onHashChange);
         }, []);
+
+        // Routing: Check if the hash starts with '#playlist/' to show PlaylistDetail
+        if (page.startsWith("#playlist/")) {
+          const parts = page.split("/");
+          const playlistId = parts[1];
+          return <PlaylistDetail playlistId={playlistId} />;
+        }
 
         switch (page) {
           case '#profile':
