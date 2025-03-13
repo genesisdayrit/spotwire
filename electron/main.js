@@ -1,6 +1,6 @@
 // main.js
 require('dotenv').config();
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron'); // Added 'dialog' here
 const path = require('path');
 
 // Uncomment the following if you need node-fetch:
@@ -48,6 +48,17 @@ function createWindow() {
   });
   win.loadFile('index.html');
 }
+
+// Handle folder selection via IPC
+ipcMain.handle('select-download-folder', async (event) => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    properties: ['openDirectory']
+  });
+  if (canceled || filePaths.length === 0) {
+    return null; // User canceled or didn't select anything
+  }
+  return filePaths[0];
+});
 
 app.whenReady().then(() => {
   // Register the custom protocol for OAuth callbacks.

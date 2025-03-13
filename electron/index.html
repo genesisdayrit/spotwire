@@ -15,7 +15,7 @@
         font-family: sans-serif;
       }
 
-      /* Utility container for Home/Instructions pages */
+      /* Utility container for Home/Instructions/Settings pages */
       .container {
         display: flex;
         flex-direction: column;
@@ -41,7 +41,7 @@
         border-radius: 0.5rem;
         font-size: 1.125rem; /* ~ text-lg */
         font-weight: 500;
-        margin-bottom: 1rem;
+        margin: 0.5rem;
         text-decoration: none;
         color: #fff;
         transition: background-color 0.2s ease-in-out;
@@ -61,14 +61,14 @@
         padding: 1rem;
       }
 
-      /* Header row: "Profile" text on left, gear on right */
+      /* Header row: Title on left, gear/back on right */
       .profile-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
         width: 100%;
         max-width: 1200px;
-        margin: 0 auto 1rem; /* center horizontally, 1rem bottom margin */
+        margin: 0 auto 1rem;
       }
 
       .profile-title {
@@ -88,7 +88,7 @@
         display: flex;
         width: 100%;
         max-width: 1200px;
-        margin: 0 auto 2rem; /* center horizontally, 2rem bottom margin */
+        margin: 0 auto 2rem;
       }
 
       .search-input {
@@ -107,11 +107,11 @@
         gap: 1rem;
         width: 100%;
         max-width: 1200px;
-        margin: 0 auto; /* center horizontally */
+        margin: 0 auto;
       }
 
       .playlist-card {
-        background-color: #2a3344; /* slightly lighter than background for contrast */
+        background-color: #2a3344;
         border-radius: 0.5rem;
         padding: 1rem;
         display: flex;
@@ -152,6 +152,42 @@
       th {
         background-color: #2a3344;
       }
+
+      /* Settings page styling */
+      .settings-container {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        width: 100%;
+        max-width: 600px;
+        margin: 2rem auto;
+        padding: 1.5rem;
+        background-color: #2a3344; /* Card-like background */
+        border-radius: 0.5rem;
+      }
+      .settings-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+      }
+      .settings-title {
+        font-size: 1.5rem;
+        margin-left: 1rem;
+      }
+      .settings-section {
+        margin-top: 1.5rem;
+      }
+      .settings-section h2 {
+        margin-bottom: 0.5rem;
+      }
+      .settings-section p {
+        margin-bottom: 1rem;
+      }
+      .folder-path {
+        font-size: 0.95rem;
+        color: #cbd5e1;
+        margin-bottom: 1rem;
+      }
     </style>
 
     <!-- React + ReactDOM + Babel (for in-browser JSX) -->
@@ -164,6 +200,7 @@
 
     <script type="text/babel">
       const { useEffect, useState } = React;
+      const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null };
 
       // Generate Spotify Login URL
       function generateSpotifyLoginUrl() {
@@ -290,11 +327,16 @@
           window.location.hash = `#playlist/${playlistId}`;
         }
 
+        // Navigate to Settings page when clicking the gear icon
+        function handleSettingsClick() {
+          window.location.hash = '#settings';
+        }
+
         return (
           <div className="profile-container">
             <div className="profile-header">
               <h1 className="profile-title">your spotify profile</h1>
-              <span className="settings-icon" title="Settings">⚙️</span>
+              <span className="settings-icon" title="Settings" onClick={handleSettingsClick}>⚙️</span>
             </div>
 
             <div className="search-container">
@@ -341,7 +383,7 @@
         );
       }
 
-      // New Component: PlaylistDetail - Display tracks of a selected playlist
+      // PlaylistDetail Component - Display tracks of a selected playlist with a Download button for each track
       function PlaylistDetail({ playlistId }) {
         const [tracks, setTracks] = useState([]);
         const [loading, setLoading] = useState(true);
@@ -351,6 +393,39 @@
         function handleTokenExpiration() {
           localStorage.removeItem('spotify_access_token');
           window.location.hash = ''; // Redirect to home/login page
+        }
+
+        // Handle Download button click
+        function handleDownload(track) {
+          const defaultFolder = localStorage.getItem('default_downloads_folder');
+          if (!defaultFolder) {
+            alert("No default download folder set. Please set it in Settings.");
+            return;
+          }
+          if (!track.external_urls || !track.external_urls.spotify) {
+            alert("Track URL not available.");
+            return;
+          }
+          const trackUrl = track.external_urls.spotify;
+          const command = `spotdl download ${trackUrl} --output "${defaultFolder}"`;
+
+          if (window.require) {
+            try {
+              const { clipboard } = window.require('electron');
+              clipboard.writeText(command);
+              alert("Command copied to clipboard!");
+            } catch (err) {
+              console.error("Clipboard error:", err);
+              alert("Failed to copy command to clipboard.");
+            }
+          } else if (navigator.clipboard) {
+            navigator.clipboard.writeText(command)
+              .then(() => alert("Command copied to clipboard!"))
+              .catch(err => {
+                console.error("Clipboard error:", err);
+                alert("Failed to copy command to clipboard.");
+              });
+          }
         }
 
         useEffect(() => {
@@ -395,6 +470,7 @@
                     <th>Track Name</th>
                     <th>Artist</th>
                     <th>Album</th>
+                    <th>Download</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -406,6 +482,11 @@
                         <td>{track.name}</td>
                         <td>{track.artists.map(artist => artist.name).join(', ')}</td>
                         <td>{track.album.name}</td>
+                        <td>
+                          <button className="button" onClick={() => handleDownload(track)}>
+                            Download
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}
@@ -414,6 +495,57 @@
             ) : (
               <p>No tracks found for this playlist.</p>
             )}
+          </div>
+        );
+      }
+
+      // Settings Component - Configure default downloads folder
+      function Settings() {
+        const [folder, setFolder] = useState(localStorage.getItem('default_downloads_folder') || '');
+
+        async function selectFolder() {
+          if (!ipcRenderer) {
+            console.error('IPC not available. Make sure you are running in Electron with nodeIntegration enabled.');
+            return;
+          }
+          try {
+            const selectedFolder = await ipcRenderer.invoke('select-download-folder');
+            if (selectedFolder) {
+              localStorage.setItem('default_downloads_folder', selectedFolder);
+              setFolder(selectedFolder);
+            }
+          } catch (err) {
+            console.error('Error selecting folder:', err);
+          }
+        }
+
+        function clearFolder() {
+          localStorage.removeItem('default_downloads_folder');
+          setFolder('');
+        }
+
+        return (
+          <div className="container">
+            <div className="settings-container">
+              <div className="settings-header">
+                <span className="button" onClick={() => window.location.hash = '#profile'}>← Back</span>
+                <h1 className="settings-title">Settings</h1>
+              </div>
+
+              <div className="settings-section">
+                <h2>Default Downloads Folder</h2>
+                <p className="folder-path">
+                  {folder ? folder : "No folder selected."}
+                </p>
+                <button className="button" onClick={selectFolder}>Select Downloads Destination</button>
+                {folder && (
+                  <button className="button" onClick={clearFolder}>Clear Selection</button>
+                )}
+                <p style={{ marginTop: '1rem', fontSize: '0.875rem' }}>
+                  This folder will be used as the default destination for your downloads.
+                </p>
+              </div>
+            </div>
           </div>
         );
       }
@@ -428,7 +560,6 @@
           return () => window.removeEventListener('hashchange', onHashChange);
         }, []);
 
-        // Routing: Check if the hash starts with '#playlist/' to show PlaylistDetail
         if (page.startsWith("#playlist/")) {
           const parts = page.split("/");
           const playlistId = parts[1];
@@ -440,14 +571,15 @@
             return <Profile />;
           case '#instructions':
             return <Instructions />;
+          case '#settings':
+            return <Settings />;
           default:
             return <Home />;
         }
       }
 
       // Listen for the access token from the main process
-      if (window.require) {
-        const { ipcRenderer } = window.require('electron');
+      if (ipcRenderer) {
         ipcRenderer.on('access-token', (event, token) => {
           console.log('Received access token in renderer:', token);
           localStorage.setItem('spotify_access_token', token);
