@@ -62,20 +62,24 @@ ipcMain.handle('select-download-folder', async (event) => {
 });
 
 // Listen for the download command execution IPC message
-ipcMain.on('execute-download-command', (event, { trackUrl, defaultFolder }) => {
+ipcMain.on('execute-download-command', (event, { downloadId, trackUrl, defaultFolder }) => {
   // Compute the relative path to the virtual environment activation script.
   const venvActivatePath = path.join(__dirname, '..', 'venv', 'bin', 'activate');
   // Construct the command using the relative path.
   const command = `bash -c "source ${venvActivatePath} && spotdl download ${trackUrl} --output '${defaultFolder}'"`;
   
+  // Record the start time of the command
+  const startTime = Date.now();
+  
   exec(command, (error, stdout, stderr) => {
-    if (error) {
-      console.error('Error executing download command:', error);
-      event.reply('download-command-result', { success: false, error: error.message });
-      return;
-    }
-    console.log('Download command output:', stdout);
-    event.reply('download-command-result', { success: true, output: stdout });
+    const result = {
+      downloadId,
+      startTime,
+      success: !error,
+      output: stdout,
+      error: error ? error.message : null
+    };
+    event.reply('download-command-result', result);
   });
 });
 

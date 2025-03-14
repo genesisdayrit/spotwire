@@ -3,19 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <title>Spotwire Electron</title>
-
-    <!-- Simple CSS for a dark navy background, card-based layout, and new header/search bar -->
     <style>
       /* Global body styling */
       body {
         margin: 0;
         padding: 0;
-        background-color: #1e293b; /* Dark navy */
+        background-color: #1e293b;
         color: #fff;
         font-family: sans-serif;
       }
-
-      /* Utility container for Home/Instructions/Settings pages */
+      /* Utility container for pages */
       .container {
         display: flex;
         flex-direction: column;
@@ -25,21 +22,19 @@
         text-align: center;
         padding: 1rem;
       }
-
       /* Large title styling */
       .title {
         font-size: 3rem;
         font-weight: bold;
         margin-bottom: 2rem;
       }
-
-      /* Buttons (mimic Tailwind's green style) */
+      /* Buttons */
       .button {
         display: inline-block;
         padding: 0.75rem 1.5rem;
-        background-color: #22c55e; /* green-500 */
+        background-color: #22c55e;
         border-radius: 0.5rem;
-        font-size: 1.125rem; /* ~ text-lg */
+        font-size: 1.125rem;
         font-weight: 500;
         margin: 0.5rem;
         text-decoration: none;
@@ -48,9 +43,8 @@
         cursor: pointer;
       }
       .button:hover {
-        background-color: #16a34a; /* green-600 */
+        background-color: #16a34a;
       }
-
       /* Profile page container */
       .profile-container {
         display: flex;
@@ -60,8 +54,7 @@
         min-height: 100vh;
         padding: 1rem;
       }
-
-      /* Header row: Title on left, gear/back on right */
+      /* Header row */
       .profile-header {
         display: flex;
         align-items: center;
@@ -70,19 +63,16 @@
         max-width: 1200px;
         margin: 0 auto 1rem;
       }
-
       .profile-title {
         font-size: 2rem;
         font-weight: bold;
         margin: 0;
       }
-
-      /* Gear icon on the top right */
+      /* Gear icon */
       .settings-icon {
         cursor: pointer;
         font-size: 1.75rem;
       }
-
       /* Search bar row */
       .search-container {
         display: flex;
@@ -90,7 +80,6 @@
         max-width: 1200px;
         margin: 0 auto 2rem;
       }
-
       .search-input {
         flex: 1;
         padding: 0.5rem 1rem;
@@ -99,7 +88,6 @@
         outline: none;
         font-size: 1rem;
       }
-
       /* Playlist grid */
       .playlist-grid {
         display: grid;
@@ -109,7 +97,6 @@
         max-width: 1200px;
         margin: 0 auto;
       }
-
       .playlist-card {
         background-color: #2a3344;
         border-radius: 0.5rem;
@@ -123,7 +110,6 @@
       .playlist-card:hover {
         transform: scale(1.02);
       }
-
       .playlist-image {
         width: 100%;
         height: auto;
@@ -131,13 +117,11 @@
         margin-bottom: 0.75rem;
         object-fit: cover;
       }
-
       .playlist-name {
         font-weight: 600;
         text-align: center;
       }
-
-      /* Table styling for playlist details */
+      /* Table styling */
       table {
         width: 100%;
         max-width: 1200px;
@@ -152,7 +136,6 @@
       th {
         background-color: #2a3344;
       }
-
       /* Settings page styling */
       .settings-container {
         display: flex;
@@ -162,7 +145,7 @@
         max-width: 600px;
         margin: 2rem auto;
         padding: 1.5rem;
-        background-color: #2a3344; /* Card-like background */
+        background-color: #2a3344;
         border-radius: 0.5rem;
       }
       .settings-header {
@@ -188,67 +171,135 @@
         color: #cbd5e1;
         margin-bottom: 1rem;
       }
+      /* Floating Downloads Button and Panel */
+      .floating-downloads-button {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 1000;
+      }
+      .download-panel {
+        position: fixed;
+        bottom: 80px;
+        right: 20px;
+        background-color: #2a3344;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        max-height: 300px;
+        overflow-y: auto;
+        z-index: 1000;
+      }
+      .download-panel table {
+        font-size: 0.875rem;
+      }
     </style>
-
-    <!-- React + ReactDOM + Babel (for in-browser JSX) -->
+    <!-- React, ReactDOM, Babel -->
     <script crossorigin src="https://unpkg.com/react@17/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   </head>
   <body>
     <div id="app"></div>
-
     <script type="text/babel">
-      const { useEffect, useState } = React;
+      const { useState, useEffect, createContext, useContext } = React;
       const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null };
 
-      // Generate Spotify Login URL
-      function generateSpotifyLoginUrl() {
-        const clientId = process.env.SPOTIFY_CLIENT_ID || 'YOUR_SPOTIFY_CLIENT_ID';
-        const redirectUri = process.env.SPOTIFY_REDIRECT_URI || 'spotwire://callback';
-        const scope = [
-          "ugc-image-upload",
-          "user-read-playback-state",
-          "user-modify-playback-state",
-          "user-read-currently-playing",
-          "streaming",
-          "app-remote-control",
-          "playlist-read-private",
-          "playlist-read-collaborative",
-          "playlist-modify-private",
-          "playlist-modify-public",
-          "user-follow-modify",
-          "user-follow-read",
-          "user-read-playback-position",
-          "user-top-read",
-          "user-read-recently-played",
-          "user-library-modify",
-          "user-library-read",
-          "user-read-email",
-          "user-read-private",
-        ];
+      /* --------------------- Downloads Context --------------------- */
+      const DownloadsContext = createContext();
 
-        const params = new URLSearchParams({
-          client_id: clientId,
-          response_type: "code",
-          redirect_uri: redirectUri,
-          scope: scope.join(" "),
-        });
+      function DownloadsProvider({ children }) {
+        const [downloads, setDownloads] = useState([]);
 
-        return `https://accounts.spotify.com/authorize?${params.toString()}`;
+        // Add a new download entry
+        const addDownload = (download) => {
+          setDownloads(prev => [...prev, download]);
+        };
+
+        // Update an existing download by id
+        const updateDownload = (downloadId, updates) => {
+          setDownloads(prev => prev.map(dl => dl.downloadId === downloadId ? { ...dl, ...updates } : dl));
+        };
+
+        return (
+          <DownloadsContext.Provider value={{ downloads, addDownload, updateDownload }}>
+            {children}
+          </DownloadsContext.Provider>
+        );
       }
 
-      // Home Page
+      function useDownloads() {
+        return useContext(DownloadsContext);
+      }
+
+      /* --------------------- Floating Downloads Panel --------------------- */
+      function DownloadPanel({ onClose }) {
+        const { downloads } = useDownloads();
+        return (
+          <div className="download-panel">
+            <h3>Downloads</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Track</th>
+                  <th>Status</th>
+                  <th>Started</th>
+                  <th>Elapsed (s)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {downloads.map(dl => (
+                  <tr key={dl.downloadId}>
+                    <td>{dl.trackName} - {dl.artist}</td>
+                    <td>{dl.status}</td>
+                    <td>{new Date(dl.startTime).toLocaleTimeString()}</td>
+                    <td>{dl.elapsed ? dl.elapsed : '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <button className="button" onClick={onClose}>Close</button>
+          </div>
+        );
+      }
+
+      /* --------------------- Home Page --------------------- */
       function Home() {
         useEffect(() => {
           const token = localStorage.getItem('spotify_access_token');
-          if (token) {
-            window.location.hash = '#profile';
-          }
+          if (token) window.location.hash = '#profile';
         }, []);
 
         function handleLogin() {
-          const loginUrl = generateSpotifyLoginUrl();
+          const clientId = process.env.SPOTIFY_CLIENT_ID || 'YOUR_SPOTIFY_CLIENT_ID';
+          const redirectUri = process.env.SPOTIFY_REDIRECT_URI || 'spotwire://callback';
+          const scope = [
+            "ugc-image-upload",
+            "user-read-playback-state",
+            "user-modify-playback-state",
+            "user-read-currently-playing",
+            "streaming",
+            "app-remote-control",
+            "playlist-read-private",
+            "playlist-read-collaborative",
+            "playlist-modify-private",
+            "playlist-modify-public",
+            "user-follow-modify",
+            "user-follow-read",
+            "user-read-playback-position",
+            "user-top-read",
+            "user-read-recently-played",
+            "user-library-modify",
+            "user-library-read",
+            "user-read-email",
+            "user-read-private",
+          ];
+          const params = new URLSearchParams({
+            client_id: clientId,
+            response_type: "code",
+            redirect_uri: redirectUri,
+            scope: scope.join(" "),
+          });
+          const loginUrl = `https://accounts.spotify.com/authorize?${params.toString()}`;
           if (window.require) {
             const { shell } = window.require('electron');
             shell.openExternal(loginUrl);
@@ -266,7 +317,7 @@
         );
       }
 
-      // Instructions Page
+      /* --------------------- Instructions Page --------------------- */
       function Instructions() {
         return (
           <div className="container">
@@ -279,17 +330,16 @@
         );
       }
 
-      // Profile Page - Display user's playlists
+      /* --------------------- Profile Page --------------------- */
       function Profile() {
         const [playlists, setPlaylists] = useState([]);
         const [loading, setLoading] = useState(true);
         const [searchTerm, setSearchTerm] = useState("");
         const accessToken = localStorage.getItem('spotify_access_token');
 
-        // Helper function to log the user out on token expiration
         function handleTokenExpiration() {
           localStorage.removeItem('spotify_access_token');
-          window.location.hash = ''; // Redirect to the home/login page
+          window.location.hash = '';
         }
 
         useEffect(() => {
@@ -299,9 +349,7 @@
             })
               .then(res => {
                 if (!res.ok) {
-                  if (res.status === 401) {
-                    handleTokenExpiration();
-                  }
+                  if (res.status === 401) handleTokenExpiration();
                   throw new Error('Failed to fetch playlists');
                 }
                 return res.json();
@@ -317,17 +365,14 @@
           }
         }, [accessToken]);
 
-        // Filter playlists by name based on searchTerm
         const filteredPlaylists = playlists.filter(playlist =>
           playlist.name.toLowerCase().includes(searchTerm.toLowerCase())
         );
 
-        // Navigate to the playlist detail view on card click
         function handlePlaylistClick(playlistId) {
           window.location.hash = `#playlist/${playlistId}`;
         }
 
-        // Navigate to Settings page when clicking the gear icon
         function handleSettingsClick() {
           window.location.hash = '#settings';
         }
@@ -338,7 +383,6 @@
               <h1 className="profile-title">your spotify profile</h1>
               <span className="settings-icon" title="Settings" onClick={handleSettingsClick}>⚙️</span>
             </div>
-
             <div className="search-container">
               <input
                 type="text"
@@ -348,7 +392,6 @@
                 onChange={e => setSearchTerm(e.target.value)}
               />
             </div>
-
             {loading ? (
               <p>Loading playlists...</p>
             ) : filteredPlaylists.length > 0 ? (
@@ -358,7 +401,6 @@
                     playlist.images && playlist.images.length > 0
                       ? playlist.images[0].url
                       : 'https://via.placeholder.com/300?text=No+Image';
-
                   return (
                     <div
                       key={playlist.id}
@@ -366,11 +408,7 @@
                       onClick={() => handlePlaylistClick(playlist.id)}
                       title="Click to view tracks"
                     >
-                      <img
-                        src={imageUrl}
-                        alt={playlist.name}
-                        className="playlist-image"
-                      />
+                      <img src={imageUrl} alt={playlist.name} className="playlist-image" />
                       <div className="playlist-name">{playlist.name}</div>
                     </div>
                   );
@@ -383,19 +421,24 @@
         );
       }
 
-      // PlaylistDetail Component - Display tracks of a selected playlist with a Download button for each track
+      /* --------------------- Playlist Detail --------------------- */
       function PlaylistDetail({ playlistId }) {
         const [tracks, setTracks] = useState([]);
         const [loading, setLoading] = useState(true);
         const accessToken = localStorage.getItem('spotify_access_token');
+        const { downloads, addDownload } = useDownloads();
 
-        // Helper function to handle token expiration
+        // Helper: determine if a track is currently downloading
+        const isDownloading = (trackId) => {
+          return downloads.some(dl => dl.trackId === trackId && (dl.status === "Started" || dl.status === "In Progress"));
+        };
+
         function handleTokenExpiration() {
           localStorage.removeItem('spotify_access_token');
-          window.location.hash = ''; // Redirect to home/login page
+          window.location.hash = '';
         }
 
-        // Handle Download button click by sending an IPC message
+        // Handle download button click
         function handleDownload(track) {
           const defaultFolder = localStorage.getItem('default_downloads_folder');
           if (!defaultFolder) {
@@ -406,10 +449,21 @@
             alert("Track URL not available.");
             return;
           }
+          // Generate a unique downloadId
+          const downloadId = `${track.id}-${Date.now()}`;
           const trackUrl = track.external_urls.spotify;
-          
-          // Send the download command via IPC to the main process
-          ipcRenderer.send('execute-download-command', { trackUrl, defaultFolder });
+          // Add download entry to global state
+          addDownload({
+            downloadId,
+            trackId: track.id,
+            trackName: track.name,
+            artist: track.artists.map(a => a.name).join(', '),
+            status: "Started",
+            startTime: Date.now(),
+            elapsed: null
+          });
+          // Send IPC message with downloadId
+          ipcRenderer.send('execute-download-command', { downloadId, trackUrl, defaultFolder });
         }
 
         useEffect(() => {
@@ -419,9 +473,7 @@
             })
               .then(res => {
                 if (!res.ok) {
-                  if (res.status === 401) {
-                    handleTokenExpiration();
-                  }
+                  if (res.status === 401) handleTokenExpiration();
                   throw new Error('Failed to fetch tracks');
                 }
                 return res.json();
@@ -467,9 +519,13 @@
                         <td>{track.artists.map(artist => artist.name).join(', ')}</td>
                         <td>{track.album.name}</td>
                         <td>
-                          <button className="button" onClick={() => handleDownload(track)}>
-                            Download
-                          </button>
+                          {isDownloading(track.id) ? (
+                            <button className="button" disabled>Downloading...</button>
+                          ) : (
+                            <button className="button" onClick={() => handleDownload(track)}>
+                              Download
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );
@@ -483,13 +539,13 @@
         );
       }
 
-      // Settings Component - Configure default downloads folder
+      /* --------------------- Settings --------------------- */
       function Settings() {
         const [folder, setFolder] = useState(localStorage.getItem('default_downloads_folder') || '');
 
         async function selectFolder() {
           if (!ipcRenderer) {
-            console.error('IPC not available. Make sure you are running in Electron with nodeIntegration enabled.');
+            console.error('IPC not available.');
             return;
           }
           try {
@@ -515,16 +571,11 @@
                 <span className="button" onClick={() => window.location.hash = '#profile'}>← Back</span>
                 <h1 className="settings-title">Settings</h1>
               </div>
-
               <div className="settings-section">
                 <h2>Default Downloads Folder</h2>
-                <p className="folder-path">
-                  {folder ? folder : "No folder selected."}
-                </p>
+                <p className="folder-path">{folder ? folder : "No folder selected."}</p>
                 <button className="button" onClick={selectFolder}>Select Downloads Destination</button>
-                {folder && (
-                  <button className="button" onClick={clearFolder}>Clear Selection</button>
-                )}
+                {folder && <button className="button" onClick={clearFolder}>Clear Selection</button>}
                 <p style={{ marginTop: '1rem', fontSize: '0.875rem' }}>
                   This folder will be used as the default destination for your downloads.
                 </p>
@@ -534,9 +585,20 @@
         );
       }
 
-      // Simple Router
+      /* --------------------- Floating Downloads Button --------------------- */
+      function FloatingDownloadsButton({ onToggle }) {
+        return (
+          <button className="button floating-downloads-button" onClick={onToggle}>
+            View Downloads
+          </button>
+        );
+      }
+
+      /* --------------------- Main App & Router --------------------- */
       function App() {
         const [page, setPage] = useState(window.location.hash);
+        const [showDownloads, setShowDownloads] = useState(false);
+        const { updateDownload } = useDownloads();
 
         useEffect(() => {
           const onHashChange = () => setPage(window.location.hash);
@@ -544,43 +606,68 @@
           return () => window.removeEventListener('hashchange', onHashChange);
         }, []);
 
+        // Listen for download results globally
+        useEffect(() => {
+          function handleDownloadResult(event, result) {
+            // result includes downloadId, success, output/error
+            const elapsed = ((Date.now() - result.startTime) / 1000).toFixed(2);
+            updateDownload(result.downloadId, {
+              status: result.success ? `Complete (${elapsed} s)` : `Failed: ${result.error}`,
+              elapsed: elapsed
+            });
+          }
+          ipcRenderer.on('download-command-result', handleDownloadResult);
+          return () => {
+            ipcRenderer.removeListener('download-command-result', handleDownloadResult);
+          };
+        }, [updateDownload]);
+
+        let Component;
         if (page.startsWith("#playlist/")) {
           const parts = page.split("/");
           const playlistId = parts[1];
-          return <PlaylistDetail playlistId={playlistId} />;
+          Component = <PlaylistDetail playlistId={playlistId} />;
+        } else {
+          switch (page) {
+            case '#profile':
+              Component = <Profile />;
+              break;
+            case '#instructions':
+              Component = <Instructions />;
+              break;
+            case '#settings':
+              Component = <Settings />;
+              break;
+            default:
+              Component = <Home />;
+          }
         }
 
-        switch (page) {
-          case '#profile':
-            return <Profile />;
-          case '#instructions':
-            return <Instructions />;
-          case '#settings':
-            return <Settings />;
-          default:
-            return <Home />;
-        }
+        return (
+          <>
+            {Component}
+            <FloatingDownloadsButton onToggle={() => setShowDownloads(prev => !prev)} />
+            {showDownloads && <DownloadPanel onClose={() => setShowDownloads(false)} />}
+          </>
+        );
       }
 
-      // Listen for the access token from the main process
+      /* --------------------- Render App with Provider --------------------- */
+      ReactDOM.render(
+        <DownloadsProvider>
+          <App />
+        </DownloadsProvider>,
+        document.getElementById('app')
+      );
+
+      /* --------------------- Global IPC Listeners --------------------- */
       if (ipcRenderer) {
         ipcRenderer.on('access-token', (event, token) => {
-          console.log('Received access token in renderer:', token);
+          console.log('Received access token:', token);
           localStorage.setItem('spotify_access_token', token);
           window.location.hash = '#profile';
         });
-
-        // Listen for download command results from the main process
-        ipcRenderer.on('download-command-result', (event, result) => {
-          if (result.success) {
-            alert("Download command executed successfully:\n" + result.output);
-          } else {
-            alert("Download command failed:\n" + result.error);
-          }
-        });
       }
-
-      ReactDOM.render(<App />, document.getElementById('app'));
     </script>
   </body>
 </html>
