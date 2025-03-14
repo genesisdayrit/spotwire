@@ -1,6 +1,7 @@
 // main.js
 require('dotenv').config();
-const { app, BrowserWindow, ipcMain, dialog } = require('electron'); // Added 'dialog' here
+const { app, BrowserWindow, ipcMain, dialog } = require('electron'); // Added 'dialog'
+const { exec } = require('child_process');
 const path = require('path');
 
 // Uncomment the following if you need node-fetch:
@@ -58,6 +59,24 @@ ipcMain.handle('select-download-folder', async (event) => {
     return null; // User canceled or didn't select anything
   }
   return filePaths[0];
+});
+
+// Listen for the download command execution IPC message
+ipcMain.on('execute-download-command', (event, { trackUrl, defaultFolder }) => {
+  // Compute the relative path to the virtual environment activation script.
+  const venvActivatePath = path.join(__dirname, '..', 'venv', 'bin', 'activate');
+  // Construct the command using the relative path.
+  const command = `bash -c "source ${venvActivatePath} && spotdl download ${trackUrl} --output '${defaultFolder}'"`;
+  
+  exec(command, (error, stdout, stderr) => {
+    if (error) {
+      console.error('Error executing download command:', error);
+      event.reply('download-command-result', { success: false, error: error.message });
+      return;
+    }
+    console.log('Download command output:', stdout);
+    event.reply('download-command-result', { success: true, output: stdout });
+  });
 });
 
 app.whenReady().then(() => {

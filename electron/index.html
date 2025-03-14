@@ -395,7 +395,7 @@
           window.location.hash = ''; // Redirect to home/login page
         }
 
-        // Handle Download button click
+        // Handle Download button click by sending an IPC message
         function handleDownload(track) {
           const defaultFolder = localStorage.getItem('default_downloads_folder');
           if (!defaultFolder) {
@@ -407,25 +407,9 @@
             return;
           }
           const trackUrl = track.external_urls.spotify;
-          const command = `spotdl download ${trackUrl} --output "${defaultFolder}"`;
-
-          if (window.require) {
-            try {
-              const { clipboard } = window.require('electron');
-              clipboard.writeText(command);
-              alert("Command copied to clipboard!");
-            } catch (err) {
-              console.error("Clipboard error:", err);
-              alert("Failed to copy command to clipboard.");
-            }
-          } else if (navigator.clipboard) {
-            navigator.clipboard.writeText(command)
-              .then(() => alert("Command copied to clipboard!"))
-              .catch(err => {
-                console.error("Clipboard error:", err);
-                alert("Failed to copy command to clipboard.");
-              });
-          }
+          
+          // Send the download command via IPC to the main process
+          ipcRenderer.send('execute-download-command', { trackUrl, defaultFolder });
         }
 
         useEffect(() => {
@@ -584,6 +568,15 @@
           console.log('Received access token in renderer:', token);
           localStorage.setItem('spotify_access_token', token);
           window.location.hash = '#profile';
+        });
+
+        // Listen for download command results from the main process
+        ipcRenderer.on('download-command-result', (event, result) => {
+          if (result.success) {
+            alert("Download command executed successfully:\n" + result.output);
+          } else {
+            alert("Download command failed:\n" + result.error);
+          }
         });
       }
 
