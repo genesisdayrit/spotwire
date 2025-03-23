@@ -80,3 +80,4 @@ coverage/
 .npmrc
 .yarn-integrity
 
+frontend/
