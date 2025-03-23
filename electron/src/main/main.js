@@ -47,7 +47,7 @@ function createWindow() {
       contextIsolation: false,
     }
   });
-  win.loadFile('index.html');
+  win.loadFile(path.join(__dirname, '../index.html'));
 }
 
 // Handle folder selection via IPC
