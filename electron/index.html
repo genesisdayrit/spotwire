@@ -421,10 +421,12 @@
         );
       }
 
-      /* --------------------- Playlist Detail --------------------- */
+      /* --------------------- Updated Playlist Detail with Load More --------------------- */
       function PlaylistDetail({ playlistId }) {
         const [tracks, setTracks] = useState([]);
+        const [nextPageUrl, setNextPageUrl] = useState(null);
         const [loading, setLoading] = useState(true);
+        const [loadingMore, setLoadingMore] = useState(false);
         const accessToken = localStorage.getItem('spotify_access_token');
         const { downloads, addDownload } = useDownloads();
 
@@ -438,6 +440,47 @@
           window.location.hash = '';
         }
 
+        // Function to fetch a page of tracks given a URL
+        const fetchTracks = (url, append = false) => {
+          fetch(url, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          })
+            .then(res => {
+              if (!res.ok) {
+                if (res.status === 401) handleTokenExpiration();
+                throw new Error('Failed to fetch tracks');
+              }
+              return res.json();
+            })
+            .then(data => {
+              setTracks(prev => append ? [...prev, ...(data.items || [])] : (data.items || []));
+              setNextPageUrl(data.next);
+              setLoading(false);
+              setLoadingMore(false);
+            })
+            .catch(err => {
+              console.error('Error fetching tracks', err);
+              setLoading(false);
+              setLoadingMore(false);
+            });
+        };
+
+        // Fetch initial page of tracks when the component mounts.
+        useEffect(() => {
+          if (accessToken && playlistId) {
+            const initialUrl = `https://api.spotify.com/v1/playlists/${playlistId}/tracks`;
+            fetchTracks(initialUrl);
+          }
+        }, [accessToken, playlistId]);
+
+        // Handler for the Load More button.
+        const loadMore = () => {
+          if (nextPageUrl) {
+            setLoadingMore(true);
+            fetchTracks(nextPageUrl, true);
+          }
+        };
+
         // Handle download button click
         function handleDownload(track) {
           const defaultFolder = localStorage.getItem('default_downloads_folder');
@@ -449,10 +492,10 @@
             alert("Track URL not available.");
             return;
           }
-          // Generate a unique downloadId
+          // Generate a unique downloadId.
           const downloadId = `${track.id}-${Date.now()}`;
           const trackUrl = track.external_urls.spotify;
-          // Add download entry to global state
+          // Add download entry to global state.
           addDownload({
             downloadId,
             trackId: track.id,
@@ -462,32 +505,9 @@
             startTime: Date.now(),
             elapsed: null
           });
-          // Send IPC message with downloadId
+          // Send IPC message with downloadId.
           ipcRenderer.send('execute-download-command', { downloadId, trackUrl, defaultFolder });
         }
-
-        useEffect(() => {
-          if (accessToken && playlistId) {
-            fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
-              headers: { Authorization: `Bearer ${accessToken}` },
-            })
-              .then(res => {
-                if (!res.ok) {
-                  if (res.status === 401) handleTokenExpiration();
-                  throw new Error('Failed to fetch tracks');
-                }
-                return res.json();
-              })
-              .then(data => {
-                setTracks(data.items || []);
-                setLoading(false);
-              })
-              .catch(err => {
-                console.error('Error fetching tracks', err);
-                setLoading(false);
-              });
-          }
-        }, [accessToken, playlistId]);
 
         return (
           <div className="profile-container">
@@ -497,41 +517,50 @@
                 Back to Profile
               </span>
             </div>
-            {loading ? (
+            {loading && tracks.length === 0 ? (
               <p>Loading tracks...</p>
             ) : tracks.length > 0 ? (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Track Name</th>
-                    <th>Artist</th>
-                    <th>Album</th>
-                    <th>Download</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tracks.map((item, index) => {
-                    const track = item.track;
-                    if (!track) return null;
-                    return (
-                      <tr key={track.id || index}>
-                        <td>{track.name}</td>
-                        <td>{track.artists.map(artist => artist.name).join(', ')}</td>
-                        <td>{track.album.name}</td>
-                        <td>
-                          {isDownloading(track.id) ? (
-                            <button className="button" disabled>Downloading...</button>
-                          ) : (
-                            <button className="button" onClick={() => handleDownload(track)}>
-                              Download
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Track Name</th>
+                      <th>Artist</th>
+                      <th>Album</th>
+                      <th>Download</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tracks.map((item, index) => {
+                      const track = item.track;
+                      if (!track) return null;
+                      return (
+                        <tr key={track.id || index}>
+                          <td>{track.name}</td>
+                          <td>{track.artists.map(artist => artist.name).join(', ')}</td>
+                          <td>{track.album.name}</td>
+                          <td>
+                            {isDownloading(track.id) ? (
+                              <button className="button" disabled>Downloading...</button>
+                            ) : (
+                              <button className="button" onClick={() => handleDownload(track)}>
+                                Download
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {nextPageUrl && (
+                  <div style={{ margin: '1rem', textAlign: 'center' }}>
+                    <button className="button" onClick={loadMore} disabled={loadingMore}>
+                      {loadingMore ? "Loading..." : "Load More"}
+                    </button>
+                  </div>
+                )}
+              </>
             ) : (
               <p>No tracks found for this playlist.</p>
             )}
@@ -609,7 +638,6 @@
         // Listen for download results globally
         useEffect(() => {
           function handleDownloadResult(event, result) {
-            // result includes downloadId, success, output/error
             const elapsed = ((Date.now() - result.startTime) / 1000).toFixed(2);
             updateDownload(result.downloadId, {
               status: result.success ? `Complete (${elapsed} s)` : `Failed: ${result.error}`,
