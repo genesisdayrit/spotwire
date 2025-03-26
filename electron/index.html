@@ -421,12 +421,13 @@
         );
       }
 
-      /* --------------------- Updated Playlist Detail with Load More --------------------- */
+      /* --------------------- Updated Playlist Detail with Search and Load More --------------------- */
       function PlaylistDetail({ playlistId }) {
         const [tracks, setTracks] = useState([]);
         const [nextPageUrl, setNextPageUrl] = useState(null);
         const [loading, setLoading] = useState(true);
         const [loadingMore, setLoadingMore] = useState(false);
+        const [searchTerm, setSearchTerm] = useState("");
         const accessToken = localStorage.getItem('spotify_access_token');
         const { downloads, addDownload } = useDownloads();
 
@@ -509,6 +510,18 @@
           ipcRenderer.send('execute-download-command', { downloadId, trackUrl, defaultFolder });
         }
 
+        // Filter tracks based on search term (matches track name or any artist name)
+        const filteredTracks = tracks.filter(item => {
+          const track = item.track;
+          if (!track) return false;
+          const lowerCaseQuery = searchTerm.toLowerCase();
+          const trackNameMatches = track.name.toLowerCase().includes(lowerCaseQuery);
+          const artistMatches = track.artists.some(artist =>
+            artist.name.toLowerCase().includes(lowerCaseQuery)
+          );
+          return trackNameMatches || artistMatches;
+        });
+
         return (
           <div className="profile-container">
             <div className="profile-header">
@@ -517,9 +530,19 @@
                 Back to Profile
               </span>
             </div>
+            {/* Search bar for filtering tracks */}
+            <div className="search-container" style={{ marginBottom: '1rem' }}>
+              <input
+                type="text"
+                className="search-input"
+                placeholder="Search tracks or artists..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+              />
+            </div>
             {loading && tracks.length === 0 ? (
               <p>Loading tracks...</p>
-            ) : tracks.length > 0 ? (
+            ) : filteredTracks.length > 0 ? (
               <>
                 <table>
                   <thead>
@@ -531,7 +554,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                    {tracks.map((item, index) => {
+                    {filteredTracks.map((item, index) => {
                       const track = item.track;
                       if (!track) return null;
                       return (
