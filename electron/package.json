@@ -1,9 +1,10 @@
 {
   "name": "spotwire-electron",
   "version": "1.0.0",
-  "main": "main.js",
+  "main": "src/main.js",
   "scripts": {
     "start": "electron .",
+    "build:css": "tailwindcss -i ./src/tailwind.css -o ./src/styles.css --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -11,10 +12,12 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
-    "electron": "^35.0.1"
+    "autoprefixer": "^10.4.21",
+    "electron": "^35.0.1",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17"
   },
   "dependencies": {
     "dotenv": "^16.4.7"
   }
 }
-

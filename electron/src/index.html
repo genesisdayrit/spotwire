@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <title>Spotwire Electron</title>
-    <!-- Link to external CSS file -->
+    <!-- Link to external CSS file (generated via Tailwind) -->
     <link rel="stylesheet" href="styles.css">
     <!-- React, ReactDOM, Babel -->
     <script crossorigin src="https://unpkg.com/react@17/umd/react.development.js"></script>
@@ -12,7 +12,10 @@
   </head>
   <body>
     <div id="app"></div>
+    <!-- Load Settings.js as a separate Babel script -->
+    <script type="text/babel" src="./components/Settings.js"></script>
     <script type="text/babel">
+      // Now Settings is available as window.Settings
       const { useState, useEffect, createContext, useContext } = React;
       const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null };
 
@@ -22,12 +25,7 @@
       function DownloadsProvider({ children }) {
         const [downloads, setDownloads] = useState([]);
 
-        // Add a new download entry
-        const addDownload = (download) => {
-          setDownloads(prev => [...prev, download]);
-        };
-
-        // Update an existing download by id
+        const addDownload = (download) => setDownloads(prev => [...prev, download]);
         const updateDownload = (downloadId, updates) => {
           setDownloads(prev =>
             prev.map(dl => dl.downloadId === downloadId ? { ...dl, ...updates } : dl)
@@ -105,7 +103,7 @@
             "user-library-modify",
             "user-library-read",
             "user-read-email",
-            "user-read-private",
+            "user-read-private"
           ];
           const params = new URLSearchParams({
             client_id: clientId,
@@ -235,7 +233,7 @@
         );
       }
 
-      /* --------------------- Updated Playlist Detail with Search and Load More --------------------- */
+      /* --------------------- Playlist Detail --------------------- */
       function PlaylistDetail({ playlistId }) {
         const [tracks, setTracks] = useState([]);
         const [nextPageUrl, setNextPageUrl] = useState(null);
@@ -255,7 +253,6 @@
           window.location.hash = '';
         }
 
-        // Function to fetch a page of tracks given a URL
         const fetchTracks = (url, append = false) => {
           fetch(url, {
             headers: { Authorization: `Bearer ${accessToken}` },
@@ -280,7 +277,6 @@
             });
         };
 
-        // Fetch initial page of tracks when the component mounts.
         useEffect(() => {
           if (accessToken && playlistId) {
             const initialUrl = `https://api.spotify.com/v1/playlists/${playlistId}/tracks`;
@@ -288,7 +284,6 @@
           }
         }, [accessToken, playlistId]);
 
-        // Handler for the Load More button.
         const loadMore = () => {
           if (nextPageUrl) {
             setLoadingMore(true);
@@ -296,7 +291,6 @@
           }
         };
 
-        // Handle download button click
         function handleDownload(track) {
           const defaultFolder = localStorage.getItem('default_downloads_folder');
           if (!defaultFolder) {
@@ -307,10 +301,8 @@
             alert("Track URL not available.");
             return;
           }
-          // Generate a unique downloadId.
           const downloadId = `${track.id}-${Date.now()}`;
           const trackUrl = track.external_urls.spotify;
-          // Add download entry to global state.
           addDownload({
             downloadId,
             trackId: track.id,
@@ -320,11 +312,9 @@
             startTime: Date.now(),
             elapsed: null
           });
-          // Send IPC message with downloadId.
           ipcRenderer.send('execute-download-command', { downloadId, trackUrl, defaultFolder });
         }
 
-        // Filter tracks based on search term (matches track name or any artist name)
         const filteredTracks = tracks.filter(item => {
           const track = item.track;
           if (!track) return false;
@@ -344,7 +334,6 @@
                 Back to Profile
               </span>
             </div>
-            {/* Search bar for filtering tracks */}
             <div className="search-container" style={{ marginBottom: '1rem' }}>
               <input
                 type="text"
@@ -405,52 +394,6 @@
         );
       }
 
-      /* --------------------- Settings --------------------- */
-      function Settings() {
-        const [folder, setFolder] = useState(localStorage.getItem('default_downloads_folder') || '');
-
-        async function selectFolder() {
-          if (!ipcRenderer) {
-            console.error('IPC not available.');
-            return;
-          }
-          try {
-            const selectedFolder = await ipcRenderer.invoke('select-download-folder');
-            if (selectedFolder) {
-              localStorage.setItem('default_downloads_folder', selectedFolder);
-              setFolder(selectedFolder);
-            }
-          } catch (err) {
-            console.error('Error selecting folder:', err);
-          }
-        }
-
-        function clearFolder() {
-          localStorage.removeItem('default_downloads_folder');
-          setFolder('');
-        }
-
-        return (
-          <div className="container">
-            <div className="settings-container">
-              <div className="settings-header">
-                <span className="button" onClick={() => window.location.hash = '#profile'}>← Back</span>
-                <h1 className="settings-title">Settings</h1>
-              </div>
-              <div className="settings-section">
-                <h2>Default Downloads Folder</h2>
-                <p className="folder-path">{folder ? folder : "No folder selected."}</p>
-                <button className="button" onClick={selectFolder}>Select Downloads Destination</button>
-                {folder && <button className="button" onClick={clearFolder}>Clear Selection</button>}
-                <p style={{ marginTop: '1rem', fontSize: '0.875rem' }}>
-                  This folder will be used as the default destination for your downloads.
-                </p>
-              </div>
-            </div>
-          </div>
-        );
-      }
-
       /* --------------------- Floating Downloads Button --------------------- */
       function FloatingDownloadsButton({ onToggle }) {
         return (
@@ -472,7 +415,6 @@
           return () => window.removeEventListener('hashchange', onHashChange);
         }, []);
 
-        // Listen for download results globally
         useEffect(() => {
           function handleDownloadResult(event, result) {
             const elapsed = ((Date.now() - result.startTime) / 1000).toFixed(2);
@@ -501,7 +443,8 @@
               Component = <Instructions />;
               break;
             case '#settings':
-              Component = <Settings />;
+              // Use the globally available Settings component
+              Component = <window.Settings />;
               break;
             default:
               Component = <Home />;
@@ -517,7 +460,6 @@
         );
       }
 
-      /* --------------------- Render App with Provider --------------------- */
       ReactDOM.render(
         <DownloadsProvider>
           <App />
@@ -525,7 +467,6 @@
         document.getElementById('app')
       );
 
-      /* --------------------- Global IPC Listeners --------------------- */
       if (ipcRenderer) {
         ipcRenderer.on('access-token', (event, token) => {
           console.log('Received access token:', token);

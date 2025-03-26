@@ -47,8 +47,8 @@ function createWindow() {
       contextIsolation: false,
     }
   });
-  win.loadFile('index.html');
-}
+  win.loadFile('src/index.html');
+}  // <-- Missing closing brace added here
 
 // Handle folder selection via IPC
 ipcMain.handle('select-download-folder', async (event) => {
