@@ -1,6 +1,6 @@
 // main.js
 require('dotenv').config();
-const { app, BrowserWindow, ipcMain, dialog } = require('electron'); // Added 'dialog'
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const { exec } = require('child_process');
 const path = require('path');
 
@@ -31,7 +31,7 @@ async function exchangeAuthCodeForToken(authCode) {
       body: params.toString(),
     });
     const data = await response.json();
-    return data; // Contains access_token, refresh_token, etc.
+    return data;
   } catch (error) {
     console.error('Error exchanging auth code:', error);
   }
@@ -42,35 +42,32 @@ function createWindow() {
     width: 800,
     height: 600,
     webPreferences: {
-      // For simplicity in this demo. In production, use a preload script and enable contextIsolation.
       nodeIntegration: true,
       contextIsolation: false,
     }
   });
   win.loadFile('src/index.html');
-}  // <-- Missing closing brace added here
+}
 
-// Handle folder selection via IPC
-ipcMain.handle('select-download-folder', async (event) => {
+ipcMain.handle('select-download-folder', async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog({
     properties: ['openDirectory']
   });
   if (canceled || filePaths.length === 0) {
-    return null; // User canceled or didn't select anything
+    return null;
   }
   return filePaths[0];
 });
-
 // Listen for the download command execution IPC message
 ipcMain.on('execute-download-command', (event, { downloadId, trackUrl, defaultFolder }) => {
   // Compute the relative path to the virtual environment activation script.
-  const venvActivatePath = path.join(__dirname, '..', 'venv', 'bin', 'activate');
+  const venvActivatePath = path.resolve(__dirname, '../../venv/bin/activate');
+  console.log("Activating venv at path:", venvActivatePath); // Debug log
   // Construct the command using the relative path.
-  const command = `bash -c "source ${venvActivatePath} && spotdl download ${trackUrl} --output '${defaultFolder}'"`;
-  
+  const command = `bash -c "source '${venvActivatePath}' && spotdl download '${trackUrl}' --output '${defaultFolder}'"`;
+
   // Record the start time of the command
   const startTime = Date.now();
-  
   exec(command, (error, stdout, stderr) => {
     const result = {
       downloadId,
