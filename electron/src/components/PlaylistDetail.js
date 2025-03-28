@@ -8,9 +8,14 @@ function PlaylistDetail({ playlistId }) {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [playlistName, setPlaylistName] = useState(""); // NEW: to store playlist name
+  const [playlistName, setPlaylistName] = useState(""); // to store playlist name
+
+  // New state to track the full playlist download
+  const [playlistDownloadInProgress, setPlaylistDownloadInProgress] = useState(false);
+  const [playlistDownloadId, setPlaylistDownloadId] = useState(null);
+
   const accessToken = localStorage.getItem("spotify_access_token");
-  const { downloads, addDownload } = useDownloads();
+  const { downloads, addDownload, updateDownload } = window.useDownloads();
 
   const isDownloading = (trackId) =>
     downloads.some(
@@ -109,6 +114,43 @@ function PlaylistDetail({ playlistId }) {
     ipcRenderer.send("execute-download-command", { downloadId, trackUrl, defaultFolder });
   }
 
+  // Handler for full playlist download
+  function handleDownloadPlaylist() {
+    const defaultFolder = localStorage.getItem("default_downloads_folder");
+    if (!defaultFolder) {
+      alert("No default download folder set. Please set it in Settings.");
+      return;
+    }
+    // If not already in progress, start the download
+    if (!playlistDownloadInProgress) {
+      const playlistUrl = `https://open.spotify.com/playlist/${playlistId}`;
+      const downloadId = `playlist-${playlistId}-${Date.now()}`;
+      setPlaylistDownloadId(downloadId);
+      setPlaylistDownloadInProgress(true);
+      // Add an aggregated download entry with the playlist title
+      addDownload({
+        downloadId,
+        trackId: null,
+        trackName: `Playlist: ${playlistName}`,
+        artist: "",
+        status: "Started",
+        startTime: Date.now(),
+        elapsed: null,
+        isPlaylist: true,
+      });
+      ipcRenderer.send("execute-download-command", {
+        downloadId,
+        trackUrl: playlistUrl,
+        defaultFolder,
+        isPlaylist: true,
+      });
+    } else {
+      // Cancel the download (UI-only cancellation)
+      updateDownload(playlistDownloadId, { status: "Canceled" });
+      setPlaylistDownloadInProgress(false);
+    }
+  }
+
   const filteredTracks = tracks.filter((item) => {
     const track = item.track;
     if (!track) return false;
@@ -132,14 +174,14 @@ function PlaylistDetail({ playlistId }) {
           >
             ←
           </span>
-          {/* Display the playlist name instead of "Playlist Tracks" */}
+          {/* Display the playlist name */}
           <h1 className="profile-title" style={{ margin: 0 }}>
             {playlistName}
           </h1>
         </div>
-        {/* New downloads button (not yet wired up) */}
-        <button className="button">
-          Download Full Playlist
+        {/* New downloads button for full playlist download */}
+        <button className="button" onClick={handleDownloadPlaylist}>
+          {playlistDownloadInProgress ? "Cancel Download" : "Download Full Playlist"}
         </button>
       </div>
 

@@ -1,4 +1,5 @@
-// main.js
+// src/main.js
+
 require('dotenv').config();
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const { exec } = require('child_process');
@@ -58,12 +59,15 @@ ipcMain.handle('select-download-folder', async () => {
   }
   return filePaths[0];
 });
+
 // Listen for the download command execution IPC message
-ipcMain.on('execute-download-command', (event, { downloadId, trackUrl, defaultFolder }) => {
+ipcMain.on('execute-download-command', (event, { downloadId, trackUrl, defaultFolder, isPlaylist }) => {
   // Compute the relative path to the virtual environment activation script.
   const venvActivatePath = path.resolve(__dirname, '../../venv/bin/activate');
-  console.log("Activating venv at path:", venvActivatePath); // Debug log
-  // Construct the command using the relative path.
+  console.log("Activating venv at path:", venvActivatePath);
+
+  // Construct the command. For both track and playlist downloads the command is similar,
+  // but we check for the isPlaylist flag for potential future modifications.
   const command = `bash -c "source '${venvActivatePath}' && spotdl download '${trackUrl}' --output '${defaultFolder}'"`;
 
   // Record the start time of the command
