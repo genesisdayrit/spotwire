@@ -8,6 +8,7 @@ function PlaylistDetail({ playlistId }) {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [playlistName, setPlaylistName] = useState(""); // NEW: to store playlist name
   const accessToken = localStorage.getItem("spotify_access_token");
   const { downloads, addDownload } = useDownloads();
 
@@ -22,6 +23,34 @@ function PlaylistDetail({ playlistId }) {
     localStorage.removeItem("spotify_access_token");
     window.location.hash = "";
   }
+
+  // Fetch playlist info (for name) and tracks
+  useEffect(() => {
+    if (accessToken && playlistId) {
+      // 1) Fetch the playlist to get its name
+      fetch(`https://api.spotify.com/v1/playlists/${playlistId}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+        .then((res) => {
+          if (!res.ok) {
+            if (res.status === 401) handleTokenExpiration();
+            throw new Error("Failed to fetch playlist details");
+          }
+          return res.json();
+        })
+        .then((data) => {
+          setPlaylistName(data.name || "Playlist");
+        })
+        .catch((err) => {
+          console.error("Error fetching playlist details", err);
+        });
+
+      // 2) Fetch the tracks
+      const initialUrl = `https://api.spotify.com/v1/playlists/${playlistId}/tracks`;
+      fetchTracks(initialUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken, playlistId]);
 
   const fetchTracks = (url, append = false) => {
     fetch(url, {
@@ -48,13 +77,6 @@ function PlaylistDetail({ playlistId }) {
         setLoadingMore(false);
       });
   };
-
-  useEffect(() => {
-    if (accessToken && playlistId) {
-      const initialUrl = `https://api.spotify.com/v1/playlists/${playlistId}/tracks`;
-      fetchTracks(initialUrl);
-    }
-  }, [accessToken, playlistId]);
 
   const loadMore = () => {
     if (nextPageUrl) {
@@ -100,12 +122,28 @@ function PlaylistDetail({ playlistId }) {
 
   return (
     <div className="profile-container">
+      {/* Header row with back arrow, playlist name, and new downloads button */}
       <div className="profile-header">
-        <h1 className="profile-title">Playlist Tracks</h1>
-        <span className="button" onClick={() => (window.location.hash = "#profile")}>
-          Back to Profile
-        </span>
+        <div style={{ display: "flex", alignItems: "center" }}>
+          {/* Back arrow to return to profile */}
+          <span
+            style={{ marginRight: "1rem", cursor: "pointer", fontSize: "1.5rem" }}
+            onClick={() => (window.location.hash = "#profile")}
+          >
+            ←
+          </span>
+          {/* Display the playlist name instead of "Playlist Tracks" */}
+          <h1 className="profile-title" style={{ margin: 0 }}>
+            {playlistName}
+          </h1>
+        </div>
+        {/* New downloads button (not yet wired up) */}
+        <button className="button">
+          Download Full Playlist
+        </button>
       </div>
+
+      {/* Search Bar */}
       <div className="search-container" style={{ marginBottom: "1rem" }}>
         <input
           type="text"
@@ -115,6 +153,8 @@ function PlaylistDetail({ playlistId }) {
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
+
+      {/* Track List */}
       {loading && tracks.length === 0 ? (
         <p>Loading tracks...</p>
       ) : filteredTracks.length > 0 ? (
@@ -153,6 +193,8 @@ function PlaylistDetail({ playlistId }) {
               })}
             </tbody>
           </table>
+
+          {/* Load More Button */}
           {nextPageUrl && (
             <div style={{ margin: "1rem", textAlign: "center" }}>
               <button className="button" onClick={loadMore} disabled={loadingMore}>
