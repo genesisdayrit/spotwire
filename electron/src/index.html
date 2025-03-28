@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <title>Spotwire Electron</title>
     <!-- Link to external CSS file (generated via Tailwind) -->
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css" />
     <!-- React, ReactDOM, Babel -->
     <script crossorigin src="https://unpkg.com/react@17/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
@@ -12,23 +12,25 @@
   </head>
   <body>
     <div id="app"></div>
-    <!-- Load Settings.js as a separate Babel script -->
+    <!-- Load external components -->
     <script type="text/babel" src="./components/Settings.js"></script>
+    <script type="text/babel" src="./components/Home.js"></script>
+    <!-- Main App Script -->
     <script type="text/babel">
-      // Now Settings is available as window.Settings
       const { useState, useEffect, createContext, useContext } = React;
       const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null };
 
       /* --------------------- Downloads Context --------------------- */
       const DownloadsContext = createContext();
-
       function DownloadsProvider({ children }) {
         const [downloads, setDownloads] = useState([]);
-
-        const addDownload = (download) => setDownloads(prev => [...prev, download]);
+        const addDownload = (download) =>
+          setDownloads((prev) => [...prev, download]);
         const updateDownload = (downloadId, updates) => {
-          setDownloads(prev =>
-            prev.map(dl => dl.downloadId === downloadId ? { ...dl, ...updates } : dl)
+          setDownloads((prev) =>
+            prev.map((dl) =>
+              dl.downloadId === downloadId ? { ...dl, ...updates } : dl
+            )
           );
         };
 
@@ -38,7 +40,6 @@
           </DownloadsContext.Provider>
         );
       }
-
       function useDownloads() {
         return useContext(DownloadsContext);
       }
@@ -59,7 +60,7 @@
                 </tr>
               </thead>
               <tbody>
-                {downloads.map(dl => (
+                {downloads.map((dl) => (
                   <tr key={dl.downloadId}>
                     <td>{dl.trackName} - {dl.artist}</td>
                     <td>{dl.status}</td>
@@ -70,61 +71,6 @@
               </tbody>
             </table>
             <button className="button" onClick={onClose}>Close</button>
-          </div>
-        );
-      }
-
-      /* --------------------- Home Page --------------------- */
-      function Home() {
-        useEffect(() => {
-          const token = localStorage.getItem('spotify_access_token');
-          if (token) window.location.hash = '#profile';
-        }, []);
-
-        function handleLogin() {
-          const clientId = process.env.SPOTIFY_CLIENT_ID || 'YOUR_SPOTIFY_CLIENT_ID';
-          const redirectUri = process.env.SPOTIFY_REDIRECT_URI || 'spotwire://callback';
-          const scope = [
-            "ugc-image-upload",
-            "user-read-playback-state",
-            "user-modify-playback-state",
-            "user-read-currently-playing",
-            "streaming",
-            "app-remote-control",
-            "playlist-read-private",
-            "playlist-read-collaborative",
-            "playlist-modify-private",
-            "playlist-modify-public",
-            "user-follow-modify",
-            "user-follow-read",
-            "user-read-playback-position",
-            "user-top-read",
-            "user-read-recently-played",
-            "user-library-modify",
-            "user-library-read",
-            "user-read-email",
-            "user-read-private"
-          ];
-          const params = new URLSearchParams({
-            client_id: clientId,
-            response_type: "code",
-            redirect_uri: redirectUri,
-            scope: scope.join(" "),
-          });
-          const loginUrl = `https://accounts.spotify.com/authorize?${params.toString()}`;
-          if (window.require) {
-            const { shell } = window.require('electron');
-            shell.openExternal(loginUrl);
-          } else {
-            window.open(loginUrl, '_blank');
-          }
-        }
-
-        return (
-          <div className="container">
-            <h1 className="title">spotwire</h1>
-            <button onClick={handleLogin} className="button">Log in with Spotify</button>
-            <a href="#instructions" className="button">Instructions</a>
           </div>
         );
       }
@@ -443,11 +389,10 @@
               Component = <Instructions />;
               break;
             case '#settings':
-              // Use the globally available Settings component
               Component = <window.Settings />;
               break;
             default:
-              Component = <Home />;
+              Component = <window.Home />;
           }
         }
 
