@@ -15,17 +15,21 @@
     <!-- Load external components -->
     <script type="text/babel" src="./components/Settings.js"></script>
     <script type="text/babel" src="./components/Home.js"></script>
+    <script type="text/babel" src="./components/Profile.js"></script>
+    <script type="text/babel" src="./components/PlaylistDetail.js"></script>
+    <script type="text/babel" src="./components/DownloadPanel.js"></script>
+    <script type="text/babel" src="./components/FloatingDownloadsButton.js"></script>
+    <script type="text/babel" src="./components/Instructions.js"></script>
     <!-- Main App Script -->
     <script type="text/babel">
       const { useState, useEffect, createContext, useContext } = React;
-      const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null };
+      const { ipcRenderer } = window.require ? window.require("electron") : { ipcRenderer: null };
 
       /* --------------------- Downloads Context --------------------- */
       const DownloadsContext = createContext();
       function DownloadsProvider({ children }) {
         const [downloads, setDownloads] = useState([]);
-        const addDownload = (download) =>
-          setDownloads((prev) => [...prev, download]);
+        const addDownload = (download) => setDownloads((prev) => [...prev, download]);
         const updateDownload = (downloadId, updates) => {
           setDownloads((prev) =>
             prev.map((dl) =>
@@ -43,311 +47,8 @@
       function useDownloads() {
         return useContext(DownloadsContext);
       }
-
-      /* --------------------- Floating Downloads Panel --------------------- */
-      function DownloadPanel({ onClose }) {
-        const { downloads } = useDownloads();
-        return (
-          <div className="download-panel">
-            <h3>Downloads</h3>
-            <table>
-              <thead>
-                <tr>
-                  <th>Track</th>
-                  <th>Status</th>
-                  <th>Started</th>
-                  <th>Elapsed (s)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {downloads.map((dl) => (
-                  <tr key={dl.downloadId}>
-                    <td>{dl.trackName} - {dl.artist}</td>
-                    <td>{dl.status}</td>
-                    <td>{new Date(dl.startTime).toLocaleTimeString()}</td>
-                    <td>{dl.elapsed ? dl.elapsed : '-'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <button className="button" onClick={onClose}>Close</button>
-          </div>
-        );
-      }
-
-      /* --------------------- Instructions Page --------------------- */
-      function Instructions() {
-        return (
-          <div className="container">
-            <h2 className="title">Instructions</h2>
-            <p style={{ maxWidth: '600px', marginBottom: '1rem' }}>
-              Here you can add instructions for your Electron app, or anything else you want.
-            </p>
-            <a href="#" className="button">Back Home</a>
-          </div>
-        );
-      }
-
-      /* --------------------- Profile Page --------------------- */
-      function Profile() {
-        const [playlists, setPlaylists] = useState([]);
-        const [loading, setLoading] = useState(true);
-        const [searchTerm, setSearchTerm] = useState("");
-        const accessToken = localStorage.getItem('spotify_access_token');
-
-        function handleTokenExpiration() {
-          localStorage.removeItem('spotify_access_token');
-          window.location.hash = '';
-        }
-
-        useEffect(() => {
-          if (accessToken) {
-            fetch('https://api.spotify.com/v1/me/playlists', {
-              headers: { Authorization: `Bearer ${accessToken}` },
-            })
-              .then(res => {
-                if (!res.ok) {
-                  if (res.status === 401) handleTokenExpiration();
-                  throw new Error('Failed to fetch playlists');
-                }
-                return res.json();
-              })
-              .then(data => {
-                setPlaylists(data.items || []);
-                setLoading(false);
-              })
-              .catch(err => {
-                console.error('Error fetching playlists', err);
-                setLoading(false);
-              });
-          }
-        }, [accessToken]);
-
-        const filteredPlaylists = playlists.filter(playlist =>
-          playlist.name.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-
-        function handlePlaylistClick(playlistId) {
-          window.location.hash = `#playlist/${playlistId}`;
-        }
-
-        function handleSettingsClick() {
-          window.location.hash = '#settings';
-        }
-
-        return (
-          <div className="profile-container">
-            <div className="profile-header">
-              <h1 className="profile-title">your spotify profile</h1>
-              <span className="settings-icon" title="Settings" onClick={handleSettingsClick}>⚙️</span>
-            </div>
-            <div className="search-container">
-              <input
-                type="text"
-                className="search-input"
-                placeholder="Search playlists..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-              />
-            </div>
-            {loading ? (
-              <p>Loading playlists...</p>
-            ) : filteredPlaylists.length > 0 ? (
-              <div className="playlist-grid">
-                {filteredPlaylists.map(playlist => {
-                  const imageUrl =
-                    playlist.images && playlist.images.length > 0
-                      ? playlist.images[0].url
-                      : 'https://via.placeholder.com/300?text=No+Image';
-                  return (
-                    <div
-                      key={playlist.id}
-                      className="playlist-card"
-                      onClick={() => handlePlaylistClick(playlist.id)}
-                      title="Click to view tracks"
-                    >
-                      <img src={imageUrl} alt={playlist.name} className="playlist-image" />
-                      <div className="playlist-name">{playlist.name}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p>No playlists found.</p>
-            )}
-          </div>
-        );
-      }
-
-      /* --------------------- Playlist Detail --------------------- */
-      function PlaylistDetail({ playlistId }) {
-        const [tracks, setTracks] = useState([]);
-        const [nextPageUrl, setNextPageUrl] = useState(null);
-        const [loading, setLoading] = useState(true);
-        const [loadingMore, setLoadingMore] = useState(false);
-        const [searchTerm, setSearchTerm] = useState("");
-        const accessToken = localStorage.getItem('spotify_access_token');
-        const { downloads, addDownload } = useDownloads();
-
-        // Helper: determine if a track is currently downloading
-        const isDownloading = (trackId) => {
-          return downloads.some(dl => dl.trackId === trackId && (dl.status === "Started" || dl.status === "In Progress"));
-        };
-
-        function handleTokenExpiration() {
-          localStorage.removeItem('spotify_access_token');
-          window.location.hash = '';
-        }
-
-        const fetchTracks = (url, append = false) => {
-          fetch(url, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          })
-            .then(res => {
-              if (!res.ok) {
-                if (res.status === 401) handleTokenExpiration();
-                throw new Error('Failed to fetch tracks');
-              }
-              return res.json();
-            })
-            .then(data => {
-              setTracks(prev => append ? [...prev, ...(data.items || [])] : (data.items || []));
-              setNextPageUrl(data.next);
-              setLoading(false);
-              setLoadingMore(false);
-            })
-            .catch(err => {
-              console.error('Error fetching tracks', err);
-              setLoading(false);
-              setLoadingMore(false);
-            });
-        };
-
-        useEffect(() => {
-          if (accessToken && playlistId) {
-            const initialUrl = `https://api.spotify.com/v1/playlists/${playlistId}/tracks`;
-            fetchTracks(initialUrl);
-          }
-        }, [accessToken, playlistId]);
-
-        const loadMore = () => {
-          if (nextPageUrl) {
-            setLoadingMore(true);
-            fetchTracks(nextPageUrl, true);
-          }
-        };
-
-        function handleDownload(track) {
-          const defaultFolder = localStorage.getItem('default_downloads_folder');
-          if (!defaultFolder) {
-            alert("No default download folder set. Please set it in Settings.");
-            return;
-          }
-          if (!track.external_urls || !track.external_urls.spotify) {
-            alert("Track URL not available.");
-            return;
-          }
-          const downloadId = `${track.id}-${Date.now()}`;
-          const trackUrl = track.external_urls.spotify;
-          addDownload({
-            downloadId,
-            trackId: track.id,
-            trackName: track.name,
-            artist: track.artists.map(a => a.name).join(', '),
-            status: "Started",
-            startTime: Date.now(),
-            elapsed: null
-          });
-          ipcRenderer.send('execute-download-command', { downloadId, trackUrl, defaultFolder });
-        }
-
-        const filteredTracks = tracks.filter(item => {
-          const track = item.track;
-          if (!track) return false;
-          const lowerCaseQuery = searchTerm.toLowerCase();
-          const trackNameMatches = track.name.toLowerCase().includes(lowerCaseQuery);
-          const artistMatches = track.artists.some(artist =>
-            artist.name.toLowerCase().includes(lowerCaseQuery)
-          );
-          return trackNameMatches || artistMatches;
-        });
-
-        return (
-          <div className="profile-container">
-            <div className="profile-header">
-              <h1 className="profile-title">Playlist Tracks</h1>
-              <span className="button" onClick={() => window.location.hash = '#profile'}>
-                Back to Profile
-              </span>
-            </div>
-            <div className="search-container" style={{ marginBottom: '1rem' }}>
-              <input
-                type="text"
-                className="search-input"
-                placeholder="Search tracks or artists..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-              />
-            </div>
-            {loading && tracks.length === 0 ? (
-              <p>Loading tracks...</p>
-            ) : filteredTracks.length > 0 ? (
-              <>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Track Name</th>
-                      <th>Artist</th>
-                      <th>Album</th>
-                      <th>Download</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredTracks.map((item, index) => {
-                      const track = item.track;
-                      if (!track) return null;
-                      return (
-                        <tr key={track.id || index}>
-                          <td>{track.name}</td>
-                          <td>{track.artists.map(artist => artist.name).join(', ')}</td>
-                          <td>{track.album.name}</td>
-                          <td>
-                            {isDownloading(track.id) ? (
-                              <button className="button" disabled>Downloading...</button>
-                            ) : (
-                              <button className="button" onClick={() => handleDownload(track)}>
-                                Download
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-                {nextPageUrl && (
-                  <div style={{ margin: '1rem', textAlign: 'center' }}>
-                    <button className="button" onClick={loadMore} disabled={loadingMore}>
-                      {loadingMore ? "Loading..." : "Load More"}
-                    </button>
-                  </div>
-                )}
-              </>
-            ) : (
-              <p>No tracks found for this playlist.</p>
-            )}
-          </div>
-        );
-      }
-
-      /* --------------------- Floating Downloads Button --------------------- */
-      function FloatingDownloadsButton({ onToggle }) {
-        return (
-          <button className="button floating-downloads-button" onClick={onToggle}>
-            View Downloads
-          </button>
-        );
-      }
+      // Expose useDownloads globally for external components
+      window.useDownloads = useDownloads;
 
       /* --------------------- Main App & Router --------------------- */
       function App() {
@@ -357,8 +58,8 @@
 
         useEffect(() => {
           const onHashChange = () => setPage(window.location.hash);
-          window.addEventListener('hashchange', onHashChange);
-          return () => window.removeEventListener('hashchange', onHashChange);
+          window.addEventListener("hashchange", onHashChange);
+          return () => window.removeEventListener("hashchange", onHashChange);
         }, []);
 
         useEffect(() => {
@@ -366,12 +67,12 @@
             const elapsed = ((Date.now() - result.startTime) / 1000).toFixed(2);
             updateDownload(result.downloadId, {
               status: result.success ? `Complete (${elapsed} s)` : `Failed: ${result.error}`,
-              elapsed: elapsed
+              elapsed: elapsed,
             });
           }
-          ipcRenderer.on('download-command-result', handleDownloadResult);
+          ipcRenderer.on("download-command-result", handleDownloadResult);
           return () => {
-            ipcRenderer.removeListener('download-command-result', handleDownloadResult);
+            ipcRenderer.removeListener("download-command-result", handleDownloadResult);
           };
         }, [updateDownload]);
 
@@ -379,16 +80,16 @@
         if (page.startsWith("#playlist/")) {
           const parts = page.split("/");
           const playlistId = parts[1];
-          Component = <PlaylistDetail playlistId={playlistId} />;
+          Component = <window.PlaylistDetail playlistId={playlistId} />;
         } else {
           switch (page) {
-            case '#profile':
-              Component = <Profile />;
+            case "#profile":
+              Component = <window.Profile />;
               break;
-            case '#instructions':
-              Component = <Instructions />;
+            case "#instructions":
+              Component = <window.Instructions />;
               break;
-            case '#settings':
+            case "#settings":
               Component = <window.Settings />;
               break;
             default:
@@ -399,8 +100,8 @@
         return (
           <>
             {Component}
-            <FloatingDownloadsButton onToggle={() => setShowDownloads(prev => !prev)} />
-            {showDownloads && <DownloadPanel onClose={() => setShowDownloads(false)} />}
+            <window.FloatingDownloadsButton onToggle={() => setShowDownloads(prev => !prev)} />
+            {showDownloads && <window.DownloadPanel onClose={() => setShowDownloads(false)} />}
           </>
         );
       }
@@ -409,14 +110,14 @@
         <DownloadsProvider>
           <App />
         </DownloadsProvider>,
-        document.getElementById('app')
+        document.getElementById("app")
       );
 
       if (ipcRenderer) {
-        ipcRenderer.on('access-token', (event, token) => {
-          console.log('Received access token:', token);
-          localStorage.setItem('spotify_access_token', token);
-          window.location.hash = '#profile';
+        ipcRenderer.on("access-token", (event, token) => {
+          console.log("Received access token:", token);
+          localStorage.setItem("spotify_access_token", token);
+          window.location.hash = "#profile";
         });
       }
     </script>
