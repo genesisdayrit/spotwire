@@ -207,23 +207,25 @@
             let currentUrl = nextUrl;
             let totalFetched = 0;
             let batchCount = 0;
+            let displayCount = likedSongs.length;
             const batchSize = 10; // Process in batches of 10 requests
             
             while (currentUrl) {
-              // Calculate progress offset based on songs already loaded
-              const progressOffset = (likedSongs.length / (likedSongs.length + totalFetched + 1)) * 100;
-              
               // Fetch a batch of pages, with incremental updates
               const result = await fetchMultiplePages(
                 currentUrl, 
                 batchSize,
-                progressOffset,
+                0,
                 true
               );
               
               // Add to total count
               totalFetched += result.items.length;
+              displayCount += result.items.length;
               batchCount++;
+              
+              // Update progress with song count instead of percentage
+              setLoadingProgress(displayCount);
               
               // We've already updated incrementally in fetchMultiplePages
               // Just update the next URL

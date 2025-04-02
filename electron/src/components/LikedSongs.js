@@ -166,11 +166,10 @@ function LikedSongs() {
             <div className="loading-more-indicator">
               <p>
                 {loadingAllSongs ? 
-                  "Loading all remaining songs..." : 
-                  "Loading more songs..."} 
-                {loadingProgress > 0 ? `${loadingProgress}%` : ''}
+                  `Loading all songs... ${likedSongs.length} loaded so far` : 
+                  `Loading more songs... ${loadingProgress > 0 ? `${loadingProgress}%` : ''}`} 
               </p>
-              {loadingProgress > 0 && (
+              {loadingProgress > 0 && !loadingAllSongs && (
                 <div className="progress-bar-container">
                   <div className="progress-bar" style={{ width: `${loadingProgress}%` }}></div>
                 </div>
