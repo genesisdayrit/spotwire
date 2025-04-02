@@ -23,7 +23,7 @@
     <script type="text/babel" src="./components/Instructions.js"></script>
     <!-- Main App Script -->
     <script type="text/babel">
-      const { useState, useEffect, createContext, useContext } = React;
+      const { useState, useEffect, createContext, useContext, useCallback, useRef } = React;
       const { ipcRenderer } = window.require ? window.require("electron") : { ipcRenderer: null };
 
       /* --------------------- Downloads Context --------------------- */
@@ -51,18 +51,177 @@
       // Expose useDownloads globally for external components
       window.useDownloads = useDownloads;
 
+      /* --------------------- Liked Songs Cache Context --------------------- */
+      const LikedSongsContext = createContext();
+      function LikedSongsProvider({ children }) {
+        const [likedSongs, setLikedSongs] = useState([]);
+        const [nextUrl, setNextUrl] = useState(null);
+        const [isLoading, setIsLoading] = useState(false);
+        const [loadingProgress, setLoadingProgress] = useState(0);
+        const [isInitialized, setIsInitialized] = useState(false);
+        const accessTokenRef = useRef(null);
+        
+        // Spotify API constants
+        const SONGS_PER_PAGE = 50; // Spotify's maximum per request
+        const PAGES_TO_LOAD = 20; // Load 20 pages of 50 songs = 1000 songs
+        
+        const updateAccessToken = useCallback((token) => {
+          accessTokenRef.current = token;
+          // When access token is updated and we don't have data yet, start preloading
+          if (token && !isInitialized && likedSongs.length === 0) {
+            preloadLikedSongs();
+          }
+        }, [isInitialized, likedSongs.length]);
+        
+        // Fetch a single page of liked songs
+        const fetchSinglePage = useCallback(async (url) => {
+          try {
+            const res = await fetch(url, {
+              headers: { Authorization: `Bearer ${accessTokenRef.current}` },
+            });
+            
+            if (!res.ok) {
+              if (res.status === 401) {
+                // Handle token expiration
+                localStorage.removeItem("spotify_access_token");
+                accessTokenRef.current = null;
+              }
+              throw new Error(`Failed to fetch liked songs: ${res.status}`);
+            }
+            
+            return await res.json();
+          } catch (error) {
+            console.error("Error fetching liked songs page:", error);
+            throw error;
+          }
+        }, []);
+        
+        // Fetch multiple pages of liked songs
+        const fetchMultiplePages = useCallback(async (initialUrl, pagesToLoad) => {
+          let currentUrl = initialUrl;
+          let allItems = [];
+          let lastData = null;
+          
+          try {
+            for (let i = 0; i < pagesToLoad; i++) {
+              if (!currentUrl) break;
+              
+              // Update loading progress for user feedback
+              setLoadingProgress(Math.round(((i + 1) / pagesToLoad) * 100));
+              
+              // Fetch the current page
+              const data = await fetchSinglePage(currentUrl);
+              allItems = [...allItems, ...(data.items || [])];
+              lastData = data;
+              currentUrl = data.next;
+              
+              // If there's no next URL, we've reached the end
+              if (!data.next) break;
+            }
+            
+            // Return aggregated results
+            return {
+              items: allItems,
+              next: lastData?.next || null
+            };
+          } catch (error) {
+            console.error("Error fetching multiple pages:", error);
+            throw error;
+          }
+        }, [fetchSinglePage]);
+        
+        // Main function to preload liked songs
+        const preloadLikedSongs = useCallback(async () => {
+          // If already loading or no token, don't start another load
+          if (isLoading || !accessTokenRef.current) return;
+          
+          try {
+            setIsLoading(true);
+            setLoadingProgress(0);
+            
+            const initialUrl = `https://api.spotify.com/v1/me/tracks?limit=${SONGS_PER_PAGE}`;
+            
+            // Fetch multiple pages
+            const result = await fetchMultiplePages(initialUrl, PAGES_TO_LOAD);
+            
+            // Update state with fetched songs
+            setLikedSongs(result.items);
+            setNextUrl(result.next);
+            setIsInitialized(true);
+            
+            console.log(`Preloaded ${result.items.length} liked songs`);
+            
+          } catch (error) {
+            console.error("Error preloading liked songs:", error);
+          } finally {
+            setIsLoading(false);
+            setLoadingProgress(0);
+          }
+        }, [fetchMultiplePages, isLoading]);
+        
+        // Load more songs beyond the preloaded amount
+        const loadMoreSongs = useCallback(async () => {
+          if (isLoading || !nextUrl || !accessTokenRef.current) return;
+          
+          try {
+            setIsLoading(true);
+            setLoadingProgress(0);
+            
+            // Fetch multiple pages
+            const result = await fetchMultiplePages(nextUrl, PAGES_TO_LOAD);
+            
+            // Update state with additional fetched songs
+            setLikedSongs(prev => [...prev, ...result.items]);
+            setNextUrl(result.next);
+            
+            console.log(`Loaded ${result.items.length} more liked songs`);
+            
+          } catch (error) {
+            console.error("Error loading more liked songs:", error);
+          } finally {
+            setIsLoading(false);
+            setLoadingProgress(0);
+          }
+        }, [fetchMultiplePages, isLoading, nextUrl]);
+        
+        return (
+          <LikedSongsContext.Provider value={{ 
+            likedSongs, 
+            nextUrl, 
+            isLoading, 
+            loadingProgress, 
+            isInitialized,
+            updateAccessToken,
+            preloadLikedSongs,
+            loadMoreSongs
+          }}>
+            {children}
+          </LikedSongsContext.Provider>
+        );
+      }
+      
+      function useLikedSongs() {
+        return useContext(LikedSongsContext);
+      }
+      
+      // Expose useLikedSongs globally for external components
+      window.useLikedSongs = useLikedSongs;
+
       /* --------------------- Main App & Router --------------------- */
       function App() {
         const [page, setPage] = useState(window.location.hash);
         const [showDownloads, setShowDownloads] = useState(false);
         const { updateDownload } = useDownloads();
-
+        const { updateAccessToken } = useLikedSongs();
+        
+        // Handle hash change for navigation
         useEffect(() => {
           const onHashChange = () => setPage(window.location.hash);
           window.addEventListener("hashchange", onHashChange);
           return () => window.removeEventListener("hashchange", onHashChange);
         }, []);
 
+        // Handle download results
         useEffect(() => {
           function handleDownloadResult(event, result) {
             const elapsed = ((Date.now() - result.startTime) / 1000).toFixed(2);
@@ -76,6 +235,29 @@
             ipcRenderer.removeListener("download-command-result", handleDownloadResult);
           };
         }, [updateDownload]);
+        
+        // Update access token for liked songs context when token changes
+        useEffect(() => {
+          const token = localStorage.getItem("spotify_access_token");
+          if (token) {
+            updateAccessToken(token);
+          }
+          
+          // Also listen for token updates
+          if (ipcRenderer) {
+            const handleAccessToken = (event, token) => {
+              console.log("Received access token:", token);
+              localStorage.setItem("spotify_access_token", token);
+              updateAccessToken(token);
+              window.location.hash = "#profile";
+            };
+            
+            ipcRenderer.on("access-token", handleAccessToken);
+            return () => {
+              ipcRenderer.removeListener("access-token", handleAccessToken);
+            };
+          }
+        }, [updateAccessToken]);
 
         let Component;
         if (page.startsWith("#playlist/")) {
@@ -112,18 +294,12 @@
 
       ReactDOM.render(
         <DownloadsProvider>
-          <App />
+          <LikedSongsProvider>
+            <App />
+          </LikedSongsProvider>
         </DownloadsProvider>,
         document.getElementById("app")
       );
-
-      if (ipcRenderer) {
-        ipcRenderer.on("access-token", (event, token) => {
-          console.log("Received access token:", token);
-          localStorage.setItem("spotify_access_token", token);
-          window.location.hash = "#profile";
-        });
-      }
     </script>
   </body>
 </html>

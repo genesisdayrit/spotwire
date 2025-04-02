@@ -3,117 +3,22 @@
 const { useState, useEffect } = React;
 
 function LikedSongs() {
-  const [likedSongs, setLikedSongs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
+  // Use the global liked songs context instead of local state
+  const { 
+    likedSongs, 
+    nextUrl, 
+    isLoading, 
+    loadingProgress, 
+    loadMoreSongs 
+  } = window.useLikedSongs();
+  
   const [searchTerm, setSearchTerm] = useState("");
-  const [nextUrl, setNextUrl] = useState(null);
   const [downloadingTrack, setDownloadingTrack] = useState(null);
-  const [loadingProgress, setLoadingProgress] = useState(0);
-  const accessToken = localStorage.getItem("spotify_access_token");
-  const SONGS_PER_PAGE = 50; // Spotify's maximum per request
-  const PAGES_TO_LOAD = 4; // Load 4 pages of 50 songs = 200 songs
 
   function handleTokenExpiration() {
     localStorage.removeItem("spotify_access_token");
     window.location.hash = "";
   }
-
-  // Fetch a single page of liked songs
-  async function fetchSinglePage(url) {
-    try {
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      
-      if (!res.ok) {
-        if (res.status === 401) handleTokenExpiration();
-        throw new Error(`Failed to fetch liked songs: ${res.status}`);
-      }
-      
-      return await res.json();
-    } catch (error) {
-      console.error("Error fetching liked songs page:", error);
-      throw error;
-    }
-  }
-
-  // Fetch multiple pages of liked songs
-  async function fetchMultiplePages(initialUrl, pagesToLoad) {
-    let currentUrl = initialUrl;
-    let allItems = [];
-    let lastData = null;
-    
-    try {
-      for (let i = 0; i < pagesToLoad; i++) {
-        if (!currentUrl) break;
-        
-        // Update loading progress for user feedback
-        setLoadingProgress(Math.round(((i + 1) / pagesToLoad) * 100));
-        
-        // Fetch the current page
-        const data = await fetchSinglePage(currentUrl);
-        allItems = [...allItems, ...(data.items || [])];
-        lastData = data;
-        currentUrl = data.next;
-        
-        // If there's no next URL, we've reached the end
-        if (!data.next) break;
-      }
-      
-      // Return aggregated results
-      return {
-        items: allItems,
-        next: lastData?.next || null
-      };
-    } catch (error) {
-      console.error("Error fetching multiple pages:", error);
-      throw error;
-    }
-  }
-
-  // Main function to load liked songs (initial or more)
-  async function loadLikedSongs(isLoadingMore = false) {
-    try {
-      // Set appropriate loading state
-      if (isLoadingMore) {
-        setLoadingMore(true);
-      } else {
-        setLoading(true);
-        setLoadingProgress(0);
-      }
-      
-      const initialUrl = isLoadingMore 
-        ? nextUrl 
-        : `https://api.spotify.com/v1/me/tracks?limit=${SONGS_PER_PAGE}`;
-      
-      // Fetch multiple pages
-      const result = await fetchMultiplePages(initialUrl, PAGES_TO_LOAD);
-      
-      // Update state with fetched songs
-      if (isLoadingMore) {
-        setLikedSongs(prev => [...prev, ...result.items]);
-      } else {
-        setLikedSongs(result.items);
-      }
-      
-      // Store next URL for pagination
-      setNextUrl(result.next);
-      
-    } catch (error) {
-      console.error("Error loading liked songs:", error);
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-      setLoadingProgress(0);
-    }
-  }
-
-  useEffect(() => {
-    if (accessToken) {
-      loadLikedSongs();
-    }
-  }, [accessToken]);
 
   const filteredSongs = likedSongs.filter((item) =>
     item.track.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -124,7 +29,7 @@ function LikedSongs() {
 
   function handleLoadMore() {
     if (nextUrl) {
-      loadLikedSongs(true);
+      loadMoreSongs();
     }
   }
 
@@ -179,7 +84,7 @@ function LikedSongs() {
         />
       </div>
 
-      {loading ? (
+      {isLoading && likedSongs.length === 0 ? (
         <div className="loading-container">
           <p>Loading your liked songs... {loadingProgress > 0 ? `${loadingProgress}%` : ''}</p>
           {loadingProgress > 0 && (
@@ -248,25 +153,25 @@ function LikedSongs() {
             </table>
           </div>
 
-          {nextUrl && (
+          {isLoading && (
+            <div className="loading-more-indicator">
+              <p>Loading more songs... {loadingProgress > 0 ? `${loadingProgress}%` : ''}</p>
+              {loadingProgress > 0 && (
+                <div className="progress-bar-container">
+                  <div className="progress-bar" style={{ width: `${loadingProgress}%` }}></div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {nextUrl && !isLoading && (
             <div className="load-more-container">
               <button 
                 className="load-more-button"
                 onClick={handleLoadMore}
-                disabled={loadingMore}
+                disabled={isLoading}
               >
-                {loadingMore ? (
-                  <>
-                    Loading more... {loadingProgress > 0 ? `${loadingProgress}%` : ''}
-                    {loadingProgress > 0 && (
-                      <div className="progress-bar-container">
-                        <div className="progress-bar" style={{ width: `${loadingProgress}%` }}></div>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  `Load more songs (${SONGS_PER_PAGE * PAGES_TO_LOAD})`
-                )}
+                Load more songs
               </button>
             </div>
           )}
