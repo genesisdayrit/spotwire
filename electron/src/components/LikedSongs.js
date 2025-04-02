@@ -8,8 +8,10 @@ function LikedSongs() {
     likedSongs, 
     nextUrl, 
     isLoading, 
-    loadingProgress, 
-    loadMoreSongs 
+    loadingProgress,
+    loadingAllSongs,
+    loadThousandMore,
+    loadAllSongs
   } = window.useLikedSongs();
   
   const [searchTerm, setSearchTerm] = useState("");
@@ -27,9 +29,15 @@ function LikedSongs() {
     )
   );
 
-  function handleLoadMore() {
+  function handleLoadThousandMore() {
     if (nextUrl) {
-      loadMoreSongs();
+      loadThousandMore();
+    }
+  }
+
+  function handleLoadAll() {
+    if (nextUrl) {
+      loadAllSongs();
     }
   }
 
@@ -155,7 +163,12 @@ function LikedSongs() {
 
           {isLoading && (
             <div className="loading-more-indicator">
-              <p>Loading more songs... {loadingProgress > 0 ? `${loadingProgress}%` : ''}</p>
+              <p>
+                {loadingAllSongs ? 
+                  "Loading all remaining songs..." : 
+                  "Loading more songs..."} 
+                {loadingProgress > 0 ? `${loadingProgress}%` : ''}
+              </p>
               {loadingProgress > 0 && (
                 <div className="progress-bar-container">
                   <div className="progress-bar" style={{ width: `${loadingProgress}%` }}></div>
@@ -165,13 +178,21 @@ function LikedSongs() {
           )}
 
           {nextUrl && !isLoading && (
-            <div className="load-more-container">
+            <div className="load-options-container">
               <button 
-                className="load-more-button"
-                onClick={handleLoadMore}
+                className="load-option-button load-thousand-button"
+                onClick={handleLoadThousandMore}
                 disabled={isLoading}
               >
-                Load more songs
+                Load 1000 More
+              </button>
+              
+              <button 
+                className="load-option-button load-all-button"
+                onClick={handleLoadAll}
+                disabled={isLoading}
+              >
+                Load All Songs
               </button>
             </div>
           )}

@@ -412,35 +412,61 @@ th {
   cursor: not-allowed;
 }
 
-.load-more-container {
+.load-options-container {
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  justify-content: center;
+  gap: 1rem;
   margin: 2rem 0;
   width: 100%;
-  max-width: 300px;
+  max-width: 500px;
   margin-left: auto;
   margin-right: auto;
 }
 
-.load-more-button {
+.load-option-button {
   padding: 0.6rem 1.2rem;
-  background-color: #4b5563;
   border: none;
   border-radius: 0.5rem;
   color: #fff;
   font-size: 1rem;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease-in-out;
+  flex: 1;
+  min-width: 150px;
 }
 
-.load-more-button:hover {
+.load-thousand-button {
+  background-color: #4b5563;
+}
+
+.load-thousand-button:hover {
   background-color: #374151;
 }
 
-.load-more-button:disabled {
+.load-all-button {
+  background-color: #4338ca; /* Indigo color */
+}
+
+.load-all-button:hover {
+  background-color: #3730a3;
+}
+
+.load-option-button:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+.loading-more-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 1rem 0;
+  width: 100%;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+  color: #9ca3af;
 }
 
 .progress-bar-container {

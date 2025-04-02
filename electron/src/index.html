@@ -59,6 +59,7 @@
         const [isLoading, setIsLoading] = useState(false);
         const [loadingProgress, setLoadingProgress] = useState(0);
         const [isInitialized, setIsInitialized] = useState(false);
+        const [loadingAllSongs, setLoadingAllSongs] = useState(false);
         const accessTokenRef = useRef(null);
         
         // Spotify API constants
@@ -97,7 +98,7 @@
         }, []);
         
         // Fetch multiple pages of liked songs
-        const fetchMultiplePages = useCallback(async (initialUrl, pagesToLoad) => {
+        const fetchMultiplePages = useCallback(async (initialUrl, pagesToLoad, progressOffset = 0, updateIncrementally = false) => {
           let currentUrl = initialUrl;
           let allItems = [];
           let lastData = null;
@@ -107,11 +108,21 @@
               if (!currentUrl) break;
               
               // Update loading progress for user feedback
-              setLoadingProgress(Math.round(((i + 1) / pagesToLoad) * 100));
+              const progressPercent = Math.round((i + 1) / pagesToLoad * 100);
+              setLoadingProgress(progressOffset + progressPercent * (1 - progressOffset/100));
               
               // Fetch the current page
               const data = await fetchSinglePage(currentUrl);
-              allItems = [...allItems, ...(data.items || [])];
+              
+              // Add new items to our collection
+              const newItems = data.items || [];
+              allItems = [...allItems, ...newItems];
+              
+              // If we should update incrementally, update the UI with what we have so far
+              if (updateIncrementally) {
+                setLikedSongs(prev => [...prev, ...newItems]);
+              }
+              
               lastData = data;
               currentUrl = data.next;
               
@@ -142,10 +153,10 @@
             const initialUrl = `https://api.spotify.com/v1/me/tracks?limit=${SONGS_PER_PAGE}`;
             
             // Fetch multiple pages
-            const result = await fetchMultiplePages(initialUrl, PAGES_TO_LOAD);
+            const result = await fetchMultiplePages(initialUrl, PAGES_TO_LOAD, 0, true);
             
-            // Update state with fetched songs
-            setLikedSongs(result.items);
+            // We've already updated the state incrementally, so no need to update again
+            // But we do need to update the next URL
             setNextUrl(result.next);
             setIsInitialized(true);
             
@@ -156,22 +167,22 @@
           } finally {
             setIsLoading(false);
             setLoadingProgress(0);
+            setLoadingAllSongs(false);
           }
         }, [fetchMultiplePages, isLoading]);
         
-        // Load more songs beyond the preloaded amount
-        const loadMoreSongs = useCallback(async () => {
+        // Load 1000 more songs
+        const loadThousandMore = useCallback(async () => {
           if (isLoading || !nextUrl || !accessTokenRef.current) return;
           
           try {
             setIsLoading(true);
             setLoadingProgress(0);
             
-            // Fetch multiple pages
-            const result = await fetchMultiplePages(nextUrl, PAGES_TO_LOAD);
+            // Fetch multiple pages with incremental updates
+            const result = await fetchMultiplePages(nextUrl, PAGES_TO_LOAD, 0, true);
             
-            // Update state with additional fetched songs
-            setLikedSongs(prev => [...prev, ...result.items]);
+            // We've already updated incrementally, just update the next URL
             setNextUrl(result.next);
             
             console.log(`Loaded ${result.items.length} more liked songs`);
@@ -184,6 +195,58 @@
           }
         }, [fetchMultiplePages, isLoading, nextUrl]);
         
+        // Load all remaining songs
+        const loadAllSongs = useCallback(async () => {
+          if (isLoading || !nextUrl || !accessTokenRef.current) return;
+          
+          try {
+            setIsLoading(true);
+            setLoadingAllSongs(true);
+            setLoadingProgress(0);
+            
+            let currentUrl = nextUrl;
+            let totalFetched = 0;
+            let batchCount = 0;
+            const batchSize = 10; // Process in batches of 10 requests
+            
+            while (currentUrl) {
+              // Calculate progress offset based on songs already loaded
+              const progressOffset = (likedSongs.length / (likedSongs.length + totalFetched + 1)) * 100;
+              
+              // Fetch a batch of pages, with incremental updates
+              const result = await fetchMultiplePages(
+                currentUrl, 
+                batchSize,
+                progressOffset,
+                true
+              );
+              
+              // Add to total count
+              totalFetched += result.items.length;
+              batchCount++;
+              
+              // We've already updated incrementally in fetchMultiplePages
+              // Just update the next URL
+              currentUrl = result.next;
+              setNextUrl(currentUrl);
+              
+              // If we have no more pages to fetch, break
+              if (!currentUrl) break;
+              
+              console.log(`Loaded batch ${batchCount} with ${result.items.length} songs (total: ${totalFetched})`);
+            }
+            
+            console.log(`Finished loading all ${totalFetched} remaining songs`);
+            
+          } catch (error) {
+            console.error("Error loading all songs:", error);
+          } finally {
+            setIsLoading(false);
+            setLoadingAllSongs(false);
+            setLoadingProgress(0);
+          }
+        }, [fetchMultiplePages, isLoading, likedSongs.length, nextUrl]);
+        
         return (
           <LikedSongsContext.Provider value={{ 
             likedSongs, 
@@ -191,9 +254,11 @@
             isLoading, 
             loadingProgress, 
             isInitialized,
+            loadingAllSongs,
             updateAccessToken,
             preloadLikedSongs,
-            loadMoreSongs
+            loadThousandMore,
+            loadAllSongs
           }}>
             {children}
           </LikedSongsContext.Provider>
