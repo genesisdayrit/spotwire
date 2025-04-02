@@ -1,6 +1,6 @@
 // src/components/LikedSongs.js
 
-const { useState, useEffect } = React;
+const { useState, useEffect, useRef } = React;
 
 function LikedSongs() {
   // Use the global liked songs context instead of local state
@@ -16,6 +16,7 @@ function LikedSongs() {
   
   const [searchTerm, setSearchTerm] = useState("");
   const [downloadingTrack, setDownloadingTrack] = useState(null);
+  const containerRef = useRef(null);
 
   function handleTokenExpiration() {
     localStorage.removeItem("spotify_access_token");
@@ -74,7 +75,7 @@ function LikedSongs() {
   }
 
   return (
-    <div className="liked-songs-container">
+    <div className="liked-songs-container" ref={containerRef}>
       <div className="liked-songs-header">
         <button className="back-button" onClick={handleBackToProfile}>
           &larr; Back to Profile
