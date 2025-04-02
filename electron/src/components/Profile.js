@@ -6,6 +6,7 @@ function Profile() {
   const [playlists, setPlaylists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeView, setActiveView] = useState("playlists"); // Track active view
   const accessToken = localStorage.getItem("spotify_access_token");
 
   function handleTokenExpiration() {
@@ -48,6 +49,17 @@ function Profile() {
     window.location.hash = "#settings";
   }
 
+  function handleViewLikedSongs() {
+    // For now, just set the active view
+    // Later this will navigate to the liked songs component
+    setActiveView("likedSongs");
+    window.location.hash = "#liked-songs";
+  }
+
+  function handleViewPlaylists() {
+    setActiveView("playlists");
+  }
+
   return (
     <div className="profile-container">
       <div className="profile-header">
@@ -60,43 +72,63 @@ function Profile() {
           ⚙️
         </span>
       </div>
-      <div className="search-container">
-        <input
-          type="text"
-          className="search-input"
-          placeholder="Search playlists..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+
+      <div className="profile-nav">
+        <button 
+          className={`nav-button ${activeView === "playlists" ? "active" : ""}`}
+          onClick={handleViewPlaylists}
+        >
+          View Playlists
+        </button>
+        <button 
+          className={`nav-button ${activeView === "likedSongs" ? "active" : ""}`}
+          onClick={handleViewLikedSongs}
+        >
+          View Liked Songs
+        </button>
       </div>
-      {loading ? (
-        <p>Loading playlists...</p>
-      ) : filteredPlaylists.length > 0 ? (
-        <div className="playlist-grid">
-          {filteredPlaylists.map((playlist) => {
-            const imageUrl =
-              playlist.images && playlist.images.length > 0
-                ? playlist.images[0].url
-                : "https://via.placeholder.com/300?text=No+Image";
-            return (
-              <div
-                key={playlist.id}
-                className="playlist-card"
-                onClick={() => handlePlaylistClick(playlist.id)}
-                title="Click to view tracks"
-              >
-                <img
-                  src={imageUrl}
-                  alt={playlist.name}
-                  className="playlist-image"
-                />
-                <div className="playlist-name">{playlist.name}</div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <p>No playlists found.</p>
+
+      {activeView === "playlists" && (
+        <>
+          <div className="search-container">
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search playlists..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          {loading ? (
+            <p>Loading playlists...</p>
+          ) : filteredPlaylists.length > 0 ? (
+            <div className="playlist-grid">
+              {filteredPlaylists.map((playlist) => {
+                const imageUrl =
+                  playlist.images && playlist.images.length > 0
+                    ? playlist.images[0].url
+                    : "https://via.placeholder.com/300?text=No+Image";
+                return (
+                  <div
+                    key={playlist.id}
+                    className="playlist-card"
+                    onClick={() => handlePlaylistClick(playlist.id)}
+                    title="Click to view tracks"
+                  >
+                    <img
+                      src={imageUrl}
+                      alt={playlist.name}
+                      className="playlist-image"
+                    />
+                    <div className="playlist-name">{playlist.name}</div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p>No playlists found.</p>
+          )}
+        </>
       )}
     </div>
   );
@@ -104,4 +136,3 @@ function Profile() {
 
 // Expose the Profile component globally
 window.Profile = Profile;
-

@@ -4,6 +4,7 @@ require('dotenv').config();
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const { exec } = require('child_process');
 const path = require('path');
+const fetch = require('node-fetch');
 
 // Uncomment the following if you need node-fetch:
 // const fetch = require('node-fetch');
@@ -115,4 +116,3 @@ app.on('open-url', async (event, url) => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
-

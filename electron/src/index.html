@@ -17,6 +17,7 @@
     <script type="text/babel" src="./components/Home.js"></script>
     <script type="text/babel" src="./components/Profile.js"></script>
     <script type="text/babel" src="./components/PlaylistDetail.js"></script>
+    <script type="text/babel" src="./components/LikedSongs.js"></script>
     <script type="text/babel" src="./components/DownloadPanel.js"></script>
     <script type="text/babel" src="./components/FloatingDownloadsButton.js"></script>
     <script type="text/babel" src="./components/Instructions.js"></script>
@@ -86,6 +87,9 @@
             case "#profile":
               Component = <window.Profile />;
               break;
+            case "#liked-songs":
+              Component = <window.LikedSongs />;
+              break;
             case "#instructions":
               Component = <window.Instructions />;
               break;
@@ -123,4 +127,3 @@
     </script>
   </body>
 </html>
-
