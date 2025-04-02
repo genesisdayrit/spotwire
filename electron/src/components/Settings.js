@@ -27,31 +27,31 @@ function Settings() {
   }
 
   return (
-    <div className="min-h-screen bg-[#1e293b] text-white">
+    <div className="settings-container">
       {/* Main content - centered */}
-      <div className="container mx-auto px-4 pt-8">
+      <div className="settings-main">
         {/* Header row: back arrow and title on the same line, centered */}
-        <div className="flex justify-center items-center mb-8">
+        <div className="settings-header-row">
           <button 
             onClick={() => window.location.hash = '#profile'} 
-            className="mr-4 px-3 py-1 bg-gray-700 rounded hover:bg-gray-600 transition-colors"
+            className="settings-back-button"
           >
             ←
           </button>
-          <h1 className="text-3xl font-bold">Settings</h1>
+          <h1 className="settings-title">Settings</h1>
         </div>
 
         {/* Rest of the settings */}
-        <div className="mb-8 text-center">
-          <h2 className="text-xl font-bold mb-4">Default Downloads Folder</h2>
+        <div className="settings-section">
+          <h2 className="settings-section-title">Default Downloads Folder</h2>
 
-          <div className="inline-block mb-6 px-4 py-3 bg-[#2a3344] border border-gray-600 rounded-md text-center max-w-lg mx-auto">
-            <span className="text-gray-300 break-all">
+          <div className="settings-folder-display">
+            <span className="settings-folder-text">
               {folder || "No folder selected."}
             </span>
           </div>
 
-          <div className="flex flex-wrap justify-center gap-2 mb-4">
+          <div className="settings-buttons-container">
             <button className="button" onClick={selectFolder}>
               Select Downloads Destination
             </button>
@@ -62,7 +62,7 @@ function Settings() {
             )}
           </div>
 
-          <p className="mt-4 text-gray-400">
+          <p className="settings-description">
             This folder will be used as the default destination for your downloads.
           </p>
         </div>
@@ -73,4 +73,3 @@ function Settings() {
 
 // Attach the component to the global object
 window.Settings = Settings;
-
