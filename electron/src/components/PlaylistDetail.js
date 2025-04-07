@@ -151,6 +151,16 @@ function PlaylistDetail({ playlistId }) {
     }
   }
 
+  function handleBackToProfile() {
+    window.location.hash = "#profile";
+  }
+
+  function formatDuration(ms) {
+    const minutes = Math.floor(ms / 60000);
+    const seconds = ((ms % 60000) / 1000).toFixed(0);
+    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+  }
+
   const filteredTracks = tracks.filter((item) => {
     const track = item.track;
     if (!track) return false;
@@ -163,30 +173,28 @@ function PlaylistDetail({ playlistId }) {
   });
 
   return (
-    <div className="profile-container">
-      {/* Header row with back arrow, playlist name, and new downloads button */}
-      <div className="profile-header">
-        <div style={{ display: "flex", alignItems: "center" }}>
-          {/* Back arrow to return to profile */}
-          <span
-            style={{ marginRight: "1rem", cursor: "pointer", fontSize: "1.5rem" }}
-            onClick={() => (window.location.hash = "#profile")}
-          >
-            ←
-          </span>
-          {/* Display the playlist name */}
-          <h1 className="profile-title" style={{ margin: 0 }}>
-            {playlistName}
-          </h1>
-        </div>
-        {/* New downloads button for full playlist download */}
-        <button className="button" onClick={handleDownloadPlaylist}>
-          {playlistDownloadInProgress ? "Cancel Download" : "Download Full Playlist"}
+    <div className="liked-songs-container">
+      <div className="liked-songs-header">
+        <button className="back-button" onClick={handleBackToProfile}>
+          &larr; Back to Profile
         </button>
+        <h1 className="liked-songs-title">{playlistName}</h1>
+        <div style={{ marginLeft: "auto" }}>
+          <button 
+            className="download-button" 
+            onClick={handleDownloadPlaylist}
+            style={{ 
+              padding: '0.6rem 1.2rem', 
+              fontSize: '0.9rem', 
+              backgroundColor: playlistDownloadInProgress ? '#4b5563' : '#22c55e' 
+            }}
+          >
+            {playlistDownloadInProgress ? "Cancel Download" : "Download Full Playlist"}
+          </button>
+        </div>
       </div>
-
-      {/* Search Bar */}
-      <div className="search-container" style={{ marginBottom: "1rem" }}>
+      
+      <div className="search-container">
         <input
           type="text"
           className="search-input"
@@ -196,57 +204,93 @@ function PlaylistDetail({ playlistId }) {
         />
       </div>
 
-      {/* Track List */}
       {loading && tracks.length === 0 ? (
-        <p>Loading tracks...</p>
+        <div className="loading-container">
+          <p>Loading tracks...</p>
+        </div>
       ) : filteredTracks.length > 0 ? (
         <>
-          <table>
-            <thead>
-              <tr>
-                <th>Track Name</th>
-                <th>Artist</th>
-                <th>Album</th>
-                <th>Download</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredTracks.map((item, index) => {
-                const track = item.track;
-                if (!track) return null;
-                return (
-                  <tr key={track.id || index}>
-                    <td>{track.name}</td>
-                    <td>{track.artists.map((artist) => artist.name).join(", ")}</td>
-                    <td>{track.album.name}</td>
-                    <td>
-                      {isDownloading(track.id) ? (
-                        <button className="button" disabled>
-                          Downloading...
+          <div className="tracks-count">
+            Showing {filteredTracks.length} {filteredTracks.length === 1 ? 'track' : 'tracks'}
+            {searchTerm && ' matching your search'}
+          </div>
+          <div className="tracks-table-container">
+            <table className="tracks-table">
+              <thead>
+                <tr>
+                  <th className="track-number">#</th>
+                  <th className="track-title-header">Title</th>
+                  <th className="track-album">Album</th>
+                  <th className="track-duration">Duration</th>
+                  <th className="track-actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTracks.map((item, index) => {
+                  const track = item.track;
+                  if (!track) return null;
+                  return (
+                    <tr key={track.id} className="track-row">
+                      <td className="track-number">{index + 1}</td>
+                      <td className="track-title">
+                        <div className="track-title-container">
+                          {track.album.images && track.album.images.length > 0 ? (
+                            <img
+                              src={track.album.images[track.album.images.length - 1].url}
+                              alt={track.album.name}
+                              className="track-image"
+                            />
+                          ) : (
+                            <div className="track-image-placeholder"></div>
+                          )}
+                          <div className="track-info">
+                            <div className="track-name">{track.name}</div>
+                            <div className="track-artist">
+                              {track.artists.map(artist => artist.name).join(", ")}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="track-album">{track.album.name}</td>
+                      <td className="track-duration">{formatDuration(track.duration_ms)}</td>
+                      <td className="track-actions">
+                        <button 
+                          className="download-button"
+                          onClick={() => handleDownload(track)}
+                          disabled={isDownloading(track.id)}
+                        >
+                          {isDownloading(track.id) ? "Downloading..." : "Download"}
                         </button>
-                      ) : (
-                        <button className="button" onClick={() => handleDownload(track)}>
-                          Download
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
-          {/* Load More Button */}
-          {nextPageUrl && (
-            <div style={{ margin: "1rem", textAlign: "center" }}>
-              <button className="button" onClick={loadMore} disabled={loadingMore}>
-                {loadingMore ? "Loading..." : "Load More"}
+          {loadingMore && (
+            <div className="loading-more-indicator">
+              <p>Loading more tracks...</p>
+            </div>
+          )}
+
+          {nextPageUrl && !loadingMore && (
+            <div className="load-options-container">
+              <button 
+                className="load-option-button load-all-button"
+                onClick={loadMore}
+                disabled={loadingMore}
+              >
+                Load All Tracks
               </button>
             </div>
           )}
         </>
       ) : (
-        <p>No tracks found for this playlist.</p>
+        <div className="empty-state">
+          <p>No tracks found{searchTerm && ' matching your search'}.</p>
+        </div>
       )}
     </div>
   );
@@ -254,4 +298,3 @@ function PlaylistDetail({ playlistId }) {
 
 // Expose the PlaylistDetail component globally
 window.PlaylistDetail = PlaylistDetail;
-
