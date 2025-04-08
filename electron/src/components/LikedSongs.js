@@ -15,8 +15,18 @@ function LikedSongs() {
   } = window.useLikedSongs();
   
   const [searchTerm, setSearchTerm] = useState("");
-  const [downloadingTrack, setDownloadingTrack] = useState(null);
   const containerRef = useRef(null);
+  
+  // Add the downloads context
+  const { downloads, addDownload, updateDownload } = window.useDownloads();
+  
+  // Check if a track is currently downloading - from downloads context
+  const isDownloading = (trackId) =>
+    downloads.some(
+      (dl) =>
+        dl.trackId === trackId &&
+        (dl.status === "Started" || dl.status === "In Progress")
+    );
 
   function handleTokenExpiration() {
     localStorage.removeItem("spotify_access_token");
@@ -48,23 +58,40 @@ function LikedSongs() {
 
   async function handleDownload(track) {
     try {
-      setDownloadingTrack(track.id);
+      const defaultFolder = localStorage.getItem("default_downloads_folder");
+      if (!defaultFolder) {
+        alert("No default download folder set. Please set it in Settings.");
+        return;
+      }
       
-      // This is a placeholder - in a real implementation, you would:
-      // 1. Use a legitimate source for the track (purchased or with proper rights)
-      // 2. Handle the download through a proper server-side implementation
-      // 3. Respect copyright and licensing restrictions
+      if (!track.external_urls || !track.external_urls.spotify) {
+        alert("Track URL not available.");
+        return;
+      }
       
-      // For demo purposes only - just simulate a download delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const downloadId = `${track.id}-${Date.now()}`;
+      const trackUrl = track.external_urls.spotify;
       
-      // Display success notification
-      alert(`Download complete: ${track.name}`);
-      setDownloadingTrack(null);
+      // Add to the downloads context
+      addDownload({
+        downloadId,
+        trackId: track.id,
+        trackName: track.name,
+        artist: track.artists.map((a) => a.name).join(", "),
+        status: "Started",
+        startTime: Date.now(),
+        elapsed: null,
+      });
+      
+      // Send the download command to the main process
+      ipcRenderer.send("execute-download-command", { 
+        downloadId, 
+        trackUrl, 
+        defaultFolder 
+      });
     } catch (error) {
       console.error("Download failed:", error);
       alert("Download failed. Please try again later.");
-      setDownloadingTrack(null);
     }
   }
 
@@ -150,9 +177,9 @@ function LikedSongs() {
                         <button 
                           className="download-button"
                           onClick={() => handleDownload(track)}
-                          disabled={downloadingTrack === track.id}
+                          disabled={isDownloading(track.id)}
                         >
-                          {downloadingTrack === track.id ? "Downloading..." : "Download"}
+                          {isDownloading(track.id) ? "Downloading..." : "Download"}
                         </button>
                       </td>
                     </tr>
