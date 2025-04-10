@@ -1,24 +1,61 @@
 {
-  "name": "spotwire-electron",
+  "name": "spotwire",
   "version": "1.0.0",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
     "build:css": "tailwindcss -i ./src/tailwind.css -o ./src/styles.css --watch",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --mac --linux",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux",
+    "publish": "electron-builder --publish always --mac --linux"
   },
   "keywords": [],
-  "author": "",
+  "author": "spotwire  <noreply@example.com>",
   "license": "ISC",
-  "description": "",
+  "description": "download your spotify music",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/genesisdayrit/spotwire.git"
+  },
+  "build": {
+    "appId": "io.github.genesisdayrit.spotwire",
+    "productName": "spotwire",
+    "files": [
+      "src/**/*",
+      "node_modules/**/*"
+    ],
+    "directories": {
+      "buildResources": "resources",
+      "output": "dist"
+    },
+    "mac": {
+      "category": "public.app-category.music",
+      "target": ["dmg", "zip"]
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Audio",
+      "maintainer": "spotwire  <noreply@example.com>"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "genesisdayrit",
+      "repo": "spotwire"
+    }
+  },
   "devDependencies": {
     "autoprefixer": "^10.4.21",
     "electron": "^35.0.1",
+    "electron-builder": "^24.11.0",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
+    "electron-updater": "^6.2.0",
+    "electron-log": "^5.0.1",
     "node-fetch": "^2.7.0"
   }
 }
