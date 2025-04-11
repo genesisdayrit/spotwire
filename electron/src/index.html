@@ -21,6 +21,7 @@
     <script type="text/babel" src="./components/DownloadPanel.js"></script>
     <script type="text/babel" src="./components/FloatingDownloadsButton.js"></script>
     <script type="text/babel" src="./components/Instructions.js"></script>
+    <script type="text/babel" src="./components/SpotifyConfig.js"></script>
     <!-- Main App Script -->
     <script type="text/babel">
       const { useState, useEffect, createContext, useContext, useCallback, useRef } = React;
@@ -344,6 +345,9 @@
               break;
             case "#settings":
               Component = <window.Settings />;
+              break;
+            case "#spotify-config":
+              Component = <window.SpotifyConfig />;
               break;
             default:
               Component = <window.Home />;

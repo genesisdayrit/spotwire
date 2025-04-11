@@ -528,3 +528,64 @@ th {
 .download-panel table {
   font-size: 0.875rem;
 }
+
+/* SpotifyConfig Styles */
+.settings-input-group {
+  margin-bottom: 15px;
+}
+
+.settings-input-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+.settings-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #1a1a1a;
+  color: #ffffff;
+}
+
+.validation-message {
+  margin: 10px 0;
+  padding: 10px;
+  border-radius: 4px;
+}
+
+.neutral-message {
+  background-color: rgba(52, 152, 219, 0.2);
+  border: 1px solid #3498db;
+  color: #3498db;
+}
+
+.valid-message {
+  background-color: rgba(39, 174, 96, 0.2);
+  border: 1px solid #27ae60;
+  color: #2ecc71;
+}
+
+.invalid-message {
+  background-color: rgba(231, 76, 60, 0.2);
+  border: 1px solid #e74c3c;
+  color: #e74c3c;
+}
+
+.config-notice {
+  margin: 15px 0;
+  padding: 10px;
+  background-color: rgba(241, 196, 15, 0.1);
+  border: 1px solid #f1c40f;
+  border-radius: 4px;
+  color: #f1c40f;
+  text-align: center;
+}
+
+.button-container {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+  justify-content: center;
+}

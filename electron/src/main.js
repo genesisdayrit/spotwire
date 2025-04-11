@@ -10,10 +10,23 @@ const fetch = require('node-fetch');
 autoUpdater.logger = require('electron-log');
 autoUpdater.logger.transports.file.level = 'info';
 
+// Store for Spotify credentials
+let spotifyCredentials = {
+  clientId: null,
+  clientSecret: null,
+  redirectUri: 'spotwire://callback'
+};
+
 async function exchangeAuthCodeForToken(authCode) {
-  const clientId = process.env.SPOTIFY_CLIENT_ID;
-  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
-  const redirectUri = process.env.SPOTIFY_REDIRECT_URI || 'spotwire://callback';
+  const clientId = process.env.SPOTIFY_CLIENT_ID || spotifyCredentials.clientId;
+  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET || spotifyCredentials.clientSecret;
+  const redirectUri = process.env.SPOTIFY_REDIRECT_URI || spotifyCredentials.redirectUri || 'spotwire://callback';
+  
+  if (!clientId || !clientSecret) {
+    console.error('Missing Spotify credentials');
+    return null;
+  }
+  
   const tokenUrl = 'https://accounts.spotify.com/api/token';
   const params = new URLSearchParams({
     grant_type: 'authorization_code',
@@ -53,6 +66,55 @@ function createWindow() {
   // Check for updates after the app loads
   autoUpdater.checkForUpdatesAndNotify();
 }
+
+// IPC handler for testing Spotify credentials
+ipcMain.handle('test-spotify-credentials', async (event, credentials) => {
+  try {
+    const { clientId, clientSecret } = credentials;
+    
+    // Test credentials by attempting to get an access token using client credentials flow
+    const tokenUrl = 'https://accounts.spotify.com/api/token';
+    const params = new URLSearchParams({
+      grant_type: 'client_credentials'
+    });
+    
+    const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+    
+    const response = await fetch(tokenUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${basicAuth}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: params.toString(),
+    });
+    
+    const data = await response.json();
+    
+    if (data.access_token) {
+      return { success: true };
+    } else {
+      return { 
+        success: false, 
+        error: data.error_description || 'Failed to obtain access token'
+      };
+    }
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error.message || 'Network error occurred'
+    };
+  }
+});
+
+// IPC handler for storing Spotify credentials
+ipcMain.on('set-spotify-credentials', (event, credentials) => {
+  spotifyCredentials = {
+    ...spotifyCredentials,
+    ...credentials
+  };
+  console.log('Spotify credentials updated');
+});
 
 ipcMain.handle('select-download-folder', async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog({
@@ -127,7 +189,7 @@ app.on('open-url', async (event, url) => {
   // Exchange the auth code for an access token.
   const tokenData = await exchangeAuthCodeForToken(authCode);
   console.log("Token data:", tokenData);
-  const accessToken = tokenData.access_token;
+  const accessToken = tokenData?.access_token;
   // Send the access token to the renderer process via IPC.
   const [win] = BrowserWindow.getAllWindows();
   if (win && accessToken) {

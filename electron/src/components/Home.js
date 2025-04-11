@@ -5,15 +5,31 @@ const { useEffect } = React;
 function Home() {
   useEffect(() => {
     const token = localStorage.getItem('spotify_access_token');
+    
     if (token) {
-      // You might show a logged-in message or perform another action
+      // Log if token exists, but don't redirect automatically
       console.log("Token found, user is logged in.");
     }
   }, []);
 
   function handleLogin() {
-    const clientId = process.env.SPOTIFY_CLIENT_ID || 'YOUR_SPOTIFY_CLIENT_ID';
-    const redirectUri = process.env.SPOTIFY_REDIRECT_URI || 'spotwire://callback';
+    const clientId = localStorage.getItem('spotify_client_id');
+    const token = localStorage.getItem('spotify_access_token');
+    
+    // Redirect to config if credentials are missing
+    if (!clientId) {
+      window.location.hash = '#spotify-config';
+      return;
+    }
+    
+    // If we already have a token, go directly to profile
+    if (token) {
+      window.location.hash = '#profile';
+      return;
+    }
+    
+    // Otherwise, start the OAuth flow
+    const redirectUri = localStorage.getItem('spotify_redirect_uri') || 'spotwire://callback';
     const scope = [
       "ugc-image-upload",
       "user-read-playback-state",
