@@ -304,20 +304,20 @@
           };
         }, [updateDownload]);
         
-        // Update access token for liked songs context when token changes
+        // Listen for access token from the main process
         useEffect(() => {
-          const token = localStorage.getItem("spotify_access_token");
-          if (token) {
-            updateAccessToken(token);
-          }
-          
-          // Also listen for token updates
+          const ipcRenderer = window.require ? window.require('electron').ipcRenderer : null;
           if (ipcRenderer) {
+            console.log("Setting up access-token listener");
             const handleAccessToken = (event, token) => {
-              console.log("Received access token:", token);
+              console.log("Access token received by renderer", !!token);
               localStorage.setItem("spotify_access_token", token);
               updateAccessToken(token);
-              window.location.hash = "#profile";
+              // Add small delay to ensure state is updated before navigation
+              setTimeout(() => {
+                console.log("Navigating to profile after token received");
+                window.location.hash = "#profile";
+              }, 100);
             };
             
             ipcRenderer.on("access-token", handleAccessToken);

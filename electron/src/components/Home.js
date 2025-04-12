@@ -9,6 +9,15 @@ function Home() {
     if (token) {
       // Log if token exists, but don't redirect automatically
       console.log("Token found, user is logged in.");
+      
+      // Force redirect to profile after a short delay 
+      // This helps ensure the app is fully loaded before redirecting
+      setTimeout(() => {
+        console.log("Redirecting to profile page...");
+        window.location.hash = '#profile';
+      }, 100);
+    } else {
+      console.log("No token found in localStorage");
     }
   }, []);
 
@@ -16,19 +25,24 @@ function Home() {
     const clientId = localStorage.getItem('spotify_client_id');
     const token = localStorage.getItem('spotify_access_token');
     
+    console.log("Login clicked - clientId exists:", !!clientId, "token exists:", !!token);
+    
     // Redirect to config if credentials are missing
     if (!clientId) {
+      console.log("No client ID, redirecting to config");
       window.location.hash = '#spotify-config';
       return;
     }
     
     // If we already have a token, go directly to profile
     if (token) {
+      console.log("Token exists, redirecting to profile");
       window.location.hash = '#profile';
       return;
     }
     
     // Otherwise, start the OAuth flow
+    console.log("Starting OAuth flow");
     const redirectUri = localStorage.getItem('spotify_redirect_uri') || 'spotwire://callback';
     const scope = [
       "ugc-image-upload",

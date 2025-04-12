@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Setting up spotwire</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #121212;
+      color: #fff;
+      font-family: sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .splash-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      max-width: 500px;
+    }
+
+    .splash-logo {
+      width: 120px;
+      height: 120px;
+      margin-bottom: 1.5rem;
+    }
+
+    .splash-title {
+      font-size: 2rem;
+      font-weight: bold;
+      margin-bottom: 1rem;
+    }
+
+    .splash-status {
+      font-size: 1rem;
+      margin-bottom: 1.5rem;
+      color: #b3b3b3;
+    }
+
+    .progress-container {
+      width: 100%;
+      background-color: #282828;
+      border-radius: 0.25rem;
+      overflow: hidden;
+      margin-bottom: 1rem;
+      height: 0.5rem;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background-color: #1DB954;
+      width: 0;
+      transition: width 0.3s;
+    }
+
+    .splash-message {
+      font-size: 0.875rem;
+      color: #b3b3b3;
+      max-width: 400px;
+    }
+  </style>
+</head>
+<body>
+  <div class="splash-container">
+    <img src="assets/icon.png" alt="spotwire logo" class="splash-logo" onerror="this.style.display='none'">
+    <h1 class="splash-title">Setting up spotwire</h1>
+    <div class="splash-status" id="status">Preparing environment...</div>
+    <div class="progress-container">
+      <div class="progress-bar" id="progress"></div>
+    </div>
+    <div class="splash-message" id="message">This one-time setup installs the required components to download music. It may take a few minutes.</div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+    
+    // Listen for setup progress updates
+    ipcRenderer.on('setup-progress', (event, data) => {
+      document.getElementById('status').textContent = data.status || 'Setting up...';
+      
+      if (data.progress !== undefined) {
+        document.getElementById('progress').style.width = `${data.progress}%`;
+      }
+      
+      if (data.message) {
+        document.getElementById('message').textContent = data.message;
+      }
+    });
+  </script>
+</body>
+</html>

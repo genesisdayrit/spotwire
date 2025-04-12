@@ -3,7 +3,7 @@
 a local interface to help you download your spotify music.
 
 requirements:
-- python3 or higher
+- python3 or higher (Python 3.9-3.11 recommended for best compatibility)
 - Spotify developer credentials (follow instructions at https://developer.spotify.com/documentation/web-api)
 
 How to use:
@@ -17,5 +17,18 @@ How to use:
 8. Inside the application, login to your Spotify account to see your library of playlists
 9. Go to settings (the gear button) to set your default download destination
 10. You should now be able to download tracks from your Spotify profile onto your computer to your destination of choice. 
+
+## FFmpeg Integration
+
+The application includes a bundled FFmpeg binary that's used for audio conversion, so you don't need to install FFmpeg separately. It will automatically be used when downloading tracks.
+
+## Build Options
+
+The application has two different approaches for running spotdl:
+
+1. **Virtual Environment Method (Current)**: Uses Python virtual environment with spotdl installed.
+2. **Compiled Binary Method (Alternative)**: Uses PyInstaller to create a standalone executable (spotdl_runner).
+
+The repository includes files for both approaches, but the current version uses the Virtual Environment Method.
 
 Will slowly improve features over time. Feel free to request anything. Enjoy!

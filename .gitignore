@@ -81,4 +81,39 @@ coverage/
 .yarn-integrity
 
 frontend/
+archive/
 dist/
+
+# Python build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+build/
+dist/
+temp_ffmpeg_bin/
+
+# Virtual environment
+venv/
+
+# Electron build
+electron/dist/
+electron/node_modules/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+*.lnk
+
+# Linux
+*~
+
+# Other
+.env
+.vscode/
+.idea/
+archive/

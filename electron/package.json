@@ -24,7 +24,26 @@
     "productName": "spotwire",
     "files": [
       "src/**/*",
-      "node_modules/**/*"
+      "node_modules/**/*",
+      "../build/python/spotdl_runner",
+      "build/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../build/python/",
+        "to": "build/python/",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "python",
+        "to": "scripts",
+        "filter": ["setup_venv.sh", "requirements.txt"]
+      },
+      {
+        "from": "python/bin",
+        "to": ".",
+        "filter": ["ffmpeg", "ffmpeg.exe"]
+      }
     ],
     "directories": {
       "buildResources": "resources",
