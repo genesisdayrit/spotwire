@@ -93,7 +93,18 @@ function PlaylistDetail({ playlistId }) {
   function handleDownload(track) {
     const defaultFolder = localStorage.getItem("default_downloads_folder");
     if (!defaultFolder) {
-      alert("No default download folder set. Please set it in Settings.");
+      if (window.customDialog) {
+        window.customDialog.show({
+          title: "No Default Download Folder",
+          message: "No default download folder set. Please set it in Settings.",
+          buttons: [
+            { label: "Go to Settings", action: () => { window.location.hash = "#settings"; } },
+            { label: "Cancel", action: () => {} }
+          ]
+        });
+      } else {
+        alert("No default download folder set. Please set it in Settings.");
+      }
       return;
     }
     if (!track.external_urls || !track.external_urls.spotify) {
@@ -118,7 +129,18 @@ function PlaylistDetail({ playlistId }) {
   function handleDownloadPlaylist() {
     const defaultFolder = localStorage.getItem("default_downloads_folder");
     if (!defaultFolder) {
-      alert("No default download folder set. Please set it in Settings.");
+      if (window.customDialog) {
+        window.customDialog.show({
+          title: "No Default Download Folder",
+          message: "No default download folder set. Please set it in Settings.",
+          buttons: [
+            { label: "Go to Settings", action: () => { window.location.hash = "#settings"; } },
+            { label: "Cancel", action: () => {} }
+          ]
+        });
+      } else {
+        alert("No default download folder set. Please set it in Settings.");
+      }
       return;
     }
     // If not already in progress, start the download

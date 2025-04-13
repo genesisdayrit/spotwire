@@ -61,7 +61,18 @@ function LikedSongs() {
     try {
       const defaultFolder = localStorage.getItem("default_downloads_folder");
       if (!defaultFolder) {
-        alert("No default download folder set. Please set it in Settings.");
+        if (window.customDialog) {
+          window.customDialog.show({
+            title: "No Default Download Folder",
+            message: "No default download folder set. Please set it in Settings.",
+            buttons: [
+              { label: "Go to Settings", action: () => { window.location.hash = "#settings"; } },
+              { label: "Cancel", action: () => {} }
+            ]
+          });
+        } else {
+          alert("No default download folder set. Please set it in Settings.");
+        }
         return;
       }
       
