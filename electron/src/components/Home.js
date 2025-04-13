@@ -93,7 +93,6 @@ function Home() {
     <div className="container">
       <h1 className="title">spotwire</h1>
       <button onClick={handleLogin} className="button">Log in with Spotify</button>
-      <a href="#instructions" className="button">Instructions</a>
     </div>
   );
 }

@@ -224,7 +224,7 @@ function SpotifyConfig() {
           
           <p className="settings-description">
             You need to register your application in the Spotify Developer Dashboard to get these credentials.
-            <a href="#instructions" className="link"> See Instructions</a>
+            <a href="https://developer.spotify.com/documentation/web-api/tutorials/getting-started" target="_blank" rel="noopener noreferrer" className="link"> Follow the official guide</a>
           </p>
         </div>
       </div>
