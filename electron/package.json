@@ -51,12 +51,14 @@
     },
     "mac": {
       "category": "public.app-category.music",
-      "target": ["dmg", "zip"]
+      "target": ["dmg", "zip"],
+      "icon": "src/assets/spotwire_logo_v1.png"
     },
     "linux": {
       "target": ["AppImage", "deb"],
       "category": "Audio",
-      "maintainer": "spotwire  <noreply@example.com>"
+      "maintainer": "spotwire  <noreply@example.com>",
+      "icon": "src/assets/spotwire_logo_v1.png"
     },
     "publish": {
       "provider": "github",
