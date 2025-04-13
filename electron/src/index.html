@@ -61,39 +61,55 @@
         const [loadingProgress, setLoadingProgress] = useState(0);
         const [isInitialized, setIsInitialized] = useState(false);
         const [loadingAllSongs, setLoadingAllSongs] = useState(false);
-        const accessTokenRef = useRef(null);
+        const accessTokenRef = useRef(localStorage.getItem("spotify_access_token") || null);
         
         // Spotify API constants
         const SONGS_PER_PAGE = 50; // Spotify's maximum per request
         const PAGES_TO_LOAD = 20; // Load 20 pages of 50 songs = 1000 songs
         
-        const updateAccessToken = useCallback((token) => {
-          accessTokenRef.current = token;
-          // When access token is updated and we don't have data yet, start preloading
-          if (token && !isInitialized && likedSongs.length === 0) {
-            preloadLikedSongs();
-          }
-        }, [isInitialized, likedSongs.length]);
-        
         // Fetch a single page of liked songs
         const fetchSinglePage = useCallback(async (url) => {
+          console.log("[LikedSongs] Fetching from URL:", url);
+          
           try {
+            if (!accessTokenRef.current) {
+              console.error("[LikedSongs] No access token available!");
+              return null;
+            }
+            
+            console.log("[LikedSongs] Making request with auth token:", 
+              accessTokenRef.current ? `${accessTokenRef.current.substring(0, 10)}...` : "none");
+              
             const res = await fetch(url, {
               headers: { Authorization: `Bearer ${accessTokenRef.current}` },
             });
             
+            console.log("[LikedSongs] Response status:", res.status);
+            
             if (!res.ok) {
               if (res.status === 401) {
                 // Handle token expiration
+                console.error("[LikedSongs] 401 Unauthorized - token expired");
                 localStorage.removeItem("spotify_access_token");
                 accessTokenRef.current = null;
               }
               throw new Error(`Failed to fetch liked songs: ${res.status}`);
             }
             
-            return await res.json();
+            const data = await res.json();
+            console.log("[LikedSongs] Successfully fetched data with", 
+              data.items ? data.items.length : 0, "items");
+            return data;
           } catch (error) {
-            console.error("Error fetching liked songs page:", error);
+            console.error("[LikedSongs] Error fetching liked songs page:", error);
+            
+            // Check for network errors
+            if (error.message.includes("Failed to fetch") || 
+                error.name === "TypeError" || 
+                error.message.includes("NetworkError")) {
+              console.error("[LikedSongs] This appears to be a network error - check internet connection");
+            }
+            
             throw error;
           }
         }, []);
@@ -114,6 +130,9 @@
               
               // Fetch the current page
               const data = await fetchSinglePage(currentUrl);
+              
+              // If we get no data, break the loop
+              if (!data) break;
               
               // Add new items to our collection
               const newItems = data.items || [];
@@ -144,14 +163,32 @@
         
         // Main function to preload liked songs
         const preloadLikedSongs = useCallback(async () => {
-          // If already loading or no token, don't start another load
-          if (isLoading || !accessTokenRef.current) return;
+          // If already loading, don't start another load
+          if (isLoading) {
+            console.log("[LikedSongs] Already loading, skipping preload request");
+            return;
+          }
+          
+          // Double-check token from both ref and localStorage
+          if (!accessTokenRef.current) {
+            const storedToken = localStorage.getItem("spotify_access_token");
+            if (storedToken) {
+              console.log("[LikedSongs] No token in ref but found in localStorage, using it");
+              accessTokenRef.current = storedToken;
+            } else {
+              console.error("[LikedSongs] No access token available in ref or localStorage, cannot preload");
+              return;
+            }
+          }
+          
+          console.log("[LikedSongs] Starting to preload liked songs");
           
           try {
             setIsLoading(true);
             setLoadingProgress(0);
             
             const initialUrl = `https://api.spotify.com/v1/me/tracks?limit=${SONGS_PER_PAGE}`;
+            console.log("[LikedSongs] Initial URL:", initialUrl);
             
             // Fetch multiple pages
             const result = await fetchMultiplePages(initialUrl, PAGES_TO_LOAD, 0, true);
@@ -161,16 +198,37 @@
             setNextUrl(result.next);
             setIsInitialized(true);
             
-            console.log(`Preloaded ${result.items.length} liked songs`);
+            console.log(`[LikedSongs] Preloaded ${result.items.length} liked songs, isInitialized now set to true`);
             
           } catch (error) {
-            console.error("Error preloading liked songs:", error);
+            console.error("[LikedSongs] Error preloading liked songs:", error);
           } finally {
             setIsLoading(false);
             setLoadingProgress(0);
             setLoadingAllSongs(false);
           }
         }, [fetchMultiplePages, isLoading]);
+        
+        // Reset isInitialized on startup to ensure we always try to reload songs
+        useEffect(() => {
+          console.log("[LikedSongs] Provider mounted, resetting initialization state");
+          setIsInitialized(false);
+          
+          // Initialize token from localStorage if available and trigger load with a small delay
+          setTimeout(() => {
+            const storedToken = localStorage.getItem("spotify_access_token");
+            if (storedToken) {
+              console.log("[LikedSongs] Found token in localStorage on mount");
+              accessTokenRef.current = storedToken;
+              
+              // Manually trigger preload if we have no songs
+              if (likedSongs.length === 0 && !isLoading) {
+                console.log("[LikedSongs] No songs loaded, triggering initial preload");
+                preloadLikedSongs();
+              }
+            }
+          }, 500);
+        }, []);
         
         // Load 1000 more songs
         const loadThousandMore = useCallback(async () => {
@@ -249,6 +307,21 @@
             setLoadingProgress(0);
           }
         }, [fetchMultiplePages, isLoading, likedSongs.length, nextUrl]);
+        
+        // Update the access token and trigger preload if needed
+        const updateAccessToken = useCallback((token) => {
+          console.log("[LikedSongs] updateAccessToken called with token:", token ? "exists" : "none");
+          
+          // Store the token in the ref
+          accessTokenRef.current = token;
+          
+          // If we have a token and no songs, trigger preload
+          if (token && likedSongs.length === 0 && !isLoading) {
+            console.log("[LikedSongs] Token updated and no songs loaded, triggering preload");
+            // Short delay to ensure token is set
+            setTimeout(() => preloadLikedSongs(), 100);
+          }
+        }, [likedSongs.length, isLoading]);
         
         return (
           <LikedSongsContext.Provider value={{ 

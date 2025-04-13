@@ -11,7 +11,8 @@ function LikedSongs() {
     loadingProgress,
     loadingAllSongs,
     loadThousandMore,
-    loadAllSongs
+    loadAllSongs,
+    preloadLikedSongs
   } = window.useLikedSongs();
   
   const [searchTerm, setSearchTerm] = useState("");
