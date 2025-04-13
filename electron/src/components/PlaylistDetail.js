@@ -25,8 +25,8 @@ function PlaylistDetail({ playlistId }) {
     );
 
   function handleTokenExpiration() {
-    localStorage.removeItem("spotify_access_token");
-    window.location.hash = "";
+    // Use the global handler instead of local implementation
+    window.handleTokenExpiration();
   }
 
   // Fetch playlist info (for name) and tracks

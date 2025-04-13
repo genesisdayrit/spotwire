@@ -72,12 +72,6 @@ async function exchangeAuthCodeForToken(authCode) {
     
     console.log('[Token Exchange] Successfully received token');
     
-    // Store the refresh token for future use
-    if (data.refresh_token) {
-      console.log('[Token Exchange] Storing refresh token for future use');
-      spotifyCredentials.refreshToken = data.refresh_token;
-    }
-    
     return data;
   } catch (error) {
     console.error('[Token Exchange] Error exchanging auth code:', error);
@@ -364,12 +358,6 @@ app.on('open-url', async (event, url) => {
   const accessToken = tokenData.access_token;
   console.log("[open-url] Access token received:", accessToken.substring(0, 10) + "...");
   
-  // Store refresh token for future use if available
-  if (tokenData.refresh_token) {
-    console.log("[open-url] Refresh token received, storing for future use");
-    spotifyCredentials.refreshToken = tokenData.refresh_token;
-  }
-
   // Send the access token to the renderer process via IPC.
   // Try to find the main window more reliably
   let targetWindow = mainWindow;
@@ -441,61 +429,6 @@ ipcMain.handle('test-spotify-credentials', async (event, credentials) => {
   }
 });
 
-// Function to refresh expired tokens
-async function refreshAccessToken(refreshToken) {
-  const clientId = process.env.SPOTIFY_CLIENT_ID || spotifyCredentials.clientId;
-  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET || spotifyCredentials.clientSecret;
-  
-  if (!clientId || !clientSecret) {
-    console.error('[Token Refresh] Missing Spotify credentials');
-    return null;
-  }
-  
-  if (!refreshToken) {
-    console.error('[Token Refresh] No refresh token provided');
-    return null;
-  }
-  
-  console.log('[Token Refresh] Attempting to refresh access token');
-  
-  const tokenUrl = 'https://accounts.spotify.com/api/token';
-  const params = new URLSearchParams({
-    grant_type: 'refresh_token',
-    refresh_token: refreshToken,
-  });
-  const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
-  
-  try {
-    const response = await fetch(tokenUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${basicAuth}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: params.toString(),
-    });
-    
-    if (!response.ok) {
-      console.error(`[Token Refresh] Error response from Spotify: ${response.status} ${response.statusText}`);
-      return null;
-    }
-    
-    const data = await response.json();
-    console.log('[Token Refresh] Successfully refreshed access token');
-    
-    // Update the refresh token if a new one is provided
-    if (data.refresh_token) {
-      console.log('[Token Refresh] Updating stored refresh token');
-      spotifyCredentials.refreshToken = data.refresh_token;
-    }
-    
-    return data;
-  } catch (error) {
-    console.error('[Token Refresh] Error refreshing token:', error);
-    return null;
-  }
-}
-
 // IPC handler for storing Spotify credentials
 ipcMain.on('set-spotify-credentials', (event, credentials) => {
   spotifyCredentials = {
@@ -504,8 +437,7 @@ ipcMain.on('set-spotify-credentials', (event, credentials) => {
   };
   console.log('[Main] Spotify credentials updated:', 
     `clientId: ${spotifyCredentials.clientId ? 'set' : 'not set'}, ` +
-    `clientSecret: ${spotifyCredentials.clientSecret ? 'set' : 'not set'}, ` +
-    `refreshToken: ${spotifyCredentials.refreshToken ? 'set' : 'not set'}`
+    `clientSecret: ${spotifyCredentials.clientSecret ? 'set' : 'not set'}`
   );
 });
 
@@ -708,43 +640,5 @@ autoUpdater.on('update-downloaded', () => {
 autoUpdater.on('error', (err) => {
   if (mainWindow) {
     mainWindow.webContents.send('update-error', err);
-  }
-});
-
-// IPC handler for refreshing an expired token
-ipcMain.handle('refresh-access-token', async () => {
-  console.log('[IPC] Refresh access token request received');
-  
-  if (!spotifyCredentials.refreshToken) {
-    console.error('[IPC] Cannot refresh token: No refresh token available');
-    return { 
-      success: false, 
-      error: 'No refresh token available. Please log in again.' 
-    };
-  }
-  
-  try {
-    const refreshedData = await refreshAccessToken(spotifyCredentials.refreshToken);
-    
-    if (!refreshedData || !refreshedData.access_token) {
-      console.error('[IPC] Token refresh failed: No access token received');
-      return { 
-        success: false, 
-        error: 'Failed to refresh access token. Please log in again.' 
-      };
-    }
-    
-    console.log('[IPC] Token refreshed successfully');
-    return {
-      success: true,
-      accessToken: refreshedData.access_token,
-      expiresIn: refreshedData.expires_in
-    };
-  } catch (error) {
-    console.error('[IPC] Error refreshing token:', error);
-    return {
-      success: false,
-      error: `Error refreshing token: ${error.message}`
-    };
   }
 });

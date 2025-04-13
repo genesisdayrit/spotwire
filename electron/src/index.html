@@ -90,8 +90,7 @@
               if (res.status === 401) {
                 // Handle token expiration
                 console.error("[LikedSongs] 401 Unauthorized - token expired");
-                localStorage.removeItem("spotify_access_token");
-                accessTokenRef.current = null;
+                window.handleTokenExpiration();
               }
               throw new Error(`Failed to fetch liked songs: ${res.status}`);
             }
@@ -428,47 +427,15 @@
           // Skip if no ipcRenderer or not in Electron
           if (!ipcRenderer) return;
           
-          // Function to handle 401 Unauthorized errors from Spotify API
-          const refreshAccessToken = async () => {
-            console.log("[Main App] Attempting to refresh access token");
-            try {
-              const result = await ipcRenderer.invoke('refresh-access-token');
-              
-              if (result.success) {
-                console.log("[Main App] Token refresh successful");
-                // Store the new token
-                localStorage.setItem("spotify_access_token", result.accessToken);
-                // Update the token in the liked songs context
-                updateAccessToken(result.accessToken);
-                return true;
-              } else {
-                console.error("[Main App] Failed to refresh token:", result.error);
-                // Clear the invalid token
-                localStorage.removeItem("spotify_access_token");
-                // Navigate back to home for re-login
-                window.location.hash = "#";
-                return false;
-              }
-            } catch (error) {
-              console.error("[Main App] Error during token refresh:", error);
-              localStorage.removeItem("spotify_access_token");
-              window.location.hash = "#";
-              return false;
-            }
+          // Global function to handle token expiration - redirects to login
+          window.handleTokenExpiration = () => {
+            console.log("[Main App] Token expired, redirecting to login");
+            // Clear the invalid token
+            localStorage.removeItem("spotify_access_token");
+            // Navigate back to home for re-login
+            window.location.hash = "#";
           };
-          
-          // Global error handler to catch 401 errors
-          window.handleApiError = (error) => {
-            if (error.status === 401) {
-              console.log("[Main App] 401 Unauthorized error detected, attempting token refresh");
-              return refreshAccessToken();
-            }
-            return Promise.resolve(false);
-          };
-          
-          // Expose the function for components to use
-          window.refreshSpotifyToken = refreshAccessToken;
-        }, [updateAccessToken]);
+        }, []);
 
         let Component;
         if (page.startsWith("#playlist/")) {
