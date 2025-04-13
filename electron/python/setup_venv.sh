@@ -7,7 +7,17 @@ set -e  # Exit on error
 # Get the directory where this script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 APP_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
-VENV_DIR="$APP_DIR/venv"
+
+# Use VENV_PATH environment variable if provided, otherwise use default
+if [ -n "$VENV_PATH" ]; then
+    VENV_DIR="$VENV_PATH"
+    echo "Using custom venv path from environment variable: $VENV_DIR"
+else
+    VENV_DIR="$APP_DIR/venv"
+fi
+
+# Create parent directories for VENV_DIR if they don't exist
+mkdir -p "$(dirname "$VENV_DIR")"
 
 # Use the requirements file path from command line argument, or use default
 if [ -n "$1" ]; then
@@ -18,6 +28,7 @@ fi
 
 echo "Setting up Python virtual environment for spotdl..."
 echo "App directory: $APP_DIR"
+echo "Venv directory: $VENV_DIR"
 echo "Using requirements file: $REQUIREMENTS_FILE"
 
 # Check if the requirements file exists

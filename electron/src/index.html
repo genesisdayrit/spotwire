@@ -308,23 +308,93 @@
         useEffect(() => {
           const ipcRenderer = window.require ? window.require('electron').ipcRenderer : null;
           if (ipcRenderer) {
-            console.log("Setting up access-token listener");
+            console.log("[Main App] Setting up access-token listener");
+            
             const handleAccessToken = (event, token) => {
-              console.log("Access token received by renderer", !!token);
-              localStorage.setItem("spotify_access_token", token);
-              updateAccessToken(token);
-              // Add small delay to ensure state is updated before navigation
-              setTimeout(() => {
-                console.log("Navigating to profile after token received");
-                window.location.hash = "#profile";
-              }, 100);
+              if (!token) {
+                console.error("[Main App] Received empty access token");
+                return;
+              }
+              
+              console.log("[Main App] Access token received in renderer", !!token, token.substring(0, 10) + "...");
+              try {
+                localStorage.setItem("spotify_access_token", token);
+                console.log("[Main App] Token saved to localStorage");
+                
+                // Update the context with the new token
+                updateAccessToken(token);
+                console.log("[Main App] Token passed to context updater");
+                
+                // Add small delay to ensure state is updated before navigation
+                setTimeout(() => {
+                  console.log("[Main App] Navigating to profile after token received");
+                  window.location.hash = "#profile";
+                }, 300);
+              } catch (error) {
+                console.error("[Main App] Error processing access token:", error);
+              }
             };
             
+            // Remove any existing listeners to avoid duplicates
+            ipcRenderer.removeAllListeners("access-token");
+            
+            // Add the listener
             ipcRenderer.on("access-token", handleAccessToken);
+            
             return () => {
+              console.log("[Main App] Cleaning up access-token listener");
               ipcRenderer.removeListener("access-token", handleAccessToken);
             };
+          } else {
+            console.warn("[Main App] IPC renderer not available, cannot listen for access token");
           }
+        }, [updateAccessToken]);
+
+        // Handle token refresh when expired
+        useEffect(() => {
+          // Skip if no ipcRenderer or not in Electron
+          if (!ipcRenderer) return;
+          
+          // Function to handle 401 Unauthorized errors from Spotify API
+          const refreshAccessToken = async () => {
+            console.log("[Main App] Attempting to refresh access token");
+            try {
+              const result = await ipcRenderer.invoke('refresh-access-token');
+              
+              if (result.success) {
+                console.log("[Main App] Token refresh successful");
+                // Store the new token
+                localStorage.setItem("spotify_access_token", result.accessToken);
+                // Update the token in the liked songs context
+                updateAccessToken(result.accessToken);
+                return true;
+              } else {
+                console.error("[Main App] Failed to refresh token:", result.error);
+                // Clear the invalid token
+                localStorage.removeItem("spotify_access_token");
+                // Navigate back to home for re-login
+                window.location.hash = "#";
+                return false;
+              }
+            } catch (error) {
+              console.error("[Main App] Error during token refresh:", error);
+              localStorage.removeItem("spotify_access_token");
+              window.location.hash = "#";
+              return false;
+            }
+          };
+          
+          // Global error handler to catch 401 errors
+          window.handleApiError = (error) => {
+            if (error.status === 401) {
+              console.log("[Main App] 401 Unauthorized error detected, attempting token refresh");
+              return refreshAccessToken();
+            }
+            return Promise.resolve(false);
+          };
+          
+          // Expose the function for components to use
+          window.refreshSpotifyToken = refreshAccessToken;
         }, [updateAccessToken]);
 
         let Component;

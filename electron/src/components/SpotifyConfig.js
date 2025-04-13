@@ -73,6 +73,8 @@ function SpotifyConfig() {
   }
 
   function saveAndLogin() {
+    console.log('[SpotifyConfig] Saving Spotify credentials to localStorage and main process');
+    
     // Save credentials
     localStorage.setItem('spotify_client_id', clientId);
     localStorage.setItem('spotify_client_secret', clientSecret);
@@ -80,58 +82,88 @@ function SpotifyConfig() {
     
     // Send to main process
     if (ipcRenderer) {
-      ipcRenderer.send('set-spotify-credentials', {
-        clientId,
-        clientSecret,
-        redirectUri
-      });
+      try {
+        console.log('[SpotifyConfig] Sending credentials to main process');
+        ipcRenderer.send('set-spotify-credentials', {
+          clientId,
+          clientSecret,
+          redirectUri
+        });
+      } catch (error) {
+        console.error('[SpotifyConfig] Error sending credentials to main process:', error);
+      }
+    } else {
+      console.warn('[SpotifyConfig] IPC not available, credentials not sent to main process');
     }
     
-    // Check if we already have a token
-    const token = localStorage.getItem('spotify_access_token');
+    // Add a small delay to ensure credentials are saved before proceeding
+    setTimeout(() => {
+      // Check if we already have a token
+      const token = localStorage.getItem('spotify_access_token');
+      
+      if (token) {
+        // If token exists, go directly to profile
+        console.log('[SpotifyConfig] Token exists, navigating to profile');
+        window.location.hash = '#profile';
+      } else {
+        // Start OAuth flow directly without going to home page
+        console.log('[SpotifyConfig] No token found, starting OAuth flow');
+        startOAuthFlow();
+      }
+    }, 300);
+  }
+  
+  function startOAuthFlow() {
+    const scope = [
+      "ugc-image-upload",
+      "user-read-playback-state",
+      "user-modify-playback-state",
+      "user-read-currently-playing",
+      "streaming",
+      "app-remote-control",
+      "playlist-read-private",
+      "playlist-read-collaborative",
+      "playlist-modify-private",
+      "playlist-modify-public",
+      "user-follow-modify",
+      "user-follow-read",
+      "user-read-playback-position",
+      "user-top-read",
+      "user-read-recently-played",
+      "user-library-modify",
+      "user-library-read",
+      "user-read-email",
+      "user-read-private"
+    ];
     
-    if (token) {
-      // If token exists, go directly to profile
-      window.location.hash = '#profile';
-    } else {
-      // Start OAuth flow directly without going to home page
-      const scope = [
-        "ugc-image-upload",
-        "user-read-playback-state",
-        "user-modify-playback-state",
-        "user-read-currently-playing",
-        "streaming",
-        "app-remote-control",
-        "playlist-read-private",
-        "playlist-read-collaborative",
-        "playlist-modify-private",
-        "playlist-modify-public",
-        "user-follow-modify",
-        "user-follow-read",
-        "user-read-playback-position",
-        "user-top-read",
-        "user-read-recently-played",
-        "user-library-modify",
-        "user-library-read",
-        "user-read-email",
-        "user-read-private"
-      ];
-      
-      const params = new URLSearchParams({
-        client_id: clientId,
-        response_type: "code",
-        redirect_uri: redirectUri,
-        scope: scope.join(" "),
-      });
-      
-      const loginUrl = `https://accounts.spotify.com/authorize?${params.toString()}`;
-      
+    const params = new URLSearchParams({
+      client_id: clientId,
+      response_type: "code",
+      redirect_uri: redirectUri,
+      scope: scope.join(" "),
+    });
+    
+    const loginUrl = `https://accounts.spotify.com/authorize?${params.toString()}`;
+    console.log('[SpotifyConfig] Generated OAuth URL with redirect URI:', redirectUri);
+    
+    try {
       if (window.require) {
         const { shell } = window.require('electron');
+        console.log('[SpotifyConfig] Opening URL with Electron shell');
         shell.openExternal(loginUrl);
       } else {
+        console.log('[SpotifyConfig] Opening URL with window.open');
         window.open(loginUrl, '_blank');
       }
+    } catch (error) {
+      console.error('[SpotifyConfig] Error opening OAuth URL:', error);
+      // Show error to user
+      setValidationStatus({
+        tested: true,
+        valid: false,
+        loading: false,
+        message: `Error starting login process: ${error.message}`
+      });
     }
   }
 

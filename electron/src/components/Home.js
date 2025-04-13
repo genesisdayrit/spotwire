@@ -8,16 +8,16 @@ function Home() {
     
     if (token) {
       // Log if token exists, but don't redirect automatically
-      console.log("Token found, user is logged in.");
+      console.log("[Home] Token found, user is logged in.");
       
       // Force redirect to profile after a short delay 
       // This helps ensure the app is fully loaded before redirecting
       setTimeout(() => {
-        console.log("Redirecting to profile page...");
+        console.log("[Home] Redirecting to profile page...");
         window.location.hash = '#profile';
       }, 100);
     } else {
-      console.log("No token found in localStorage");
+      console.log("[Home] No token found in localStorage");
     }
   }, []);
 
@@ -25,25 +25,29 @@ function Home() {
     const clientId = localStorage.getItem('spotify_client_id');
     const token = localStorage.getItem('spotify_access_token');
     
-    console.log("Login clicked - clientId exists:", !!clientId, "token exists:", !!token);
+    console.log("[Home] Login clicked - clientId exists:", !!clientId, "token exists:", !!token);
     
     // Redirect to config if credentials are missing
     if (!clientId) {
-      console.log("No client ID, redirecting to config");
+      console.log("[Home] No client ID, redirecting to config");
       window.location.hash = '#spotify-config';
       return;
     }
     
     // If we already have a token, go directly to profile
     if (token) {
-      console.log("Token exists, redirecting to profile");
+      console.log("[Home] Token exists, redirecting to profile");
       window.location.hash = '#profile';
       return;
     }
     
     // Otherwise, start the OAuth flow
-    console.log("Starting OAuth flow");
-    const redirectUri = localStorage.getItem('spotify_redirect_uri') || 'spotwire://callback';
+    console.log("[Home] Starting OAuth flow");
+    
+    // Make sure to use the correct redirect URI for the packaged app
+    const redirectUri = 'spotwire://callback';
+    localStorage.setItem('spotify_redirect_uri', redirectUri);
+    
     const scope = [
       "ugc-image-upload",
       "user-read-playback-state",
@@ -65,18 +69,29 @@ function Home() {
       "user-read-email",
       "user-read-private"
     ];
+    
     const params = new URLSearchParams({
       client_id: clientId,
       response_type: "code",
       redirect_uri: redirectUri,
       scope: scope.join(" "),
     });
+    
     const loginUrl = `https://accounts.spotify.com/authorize?${params.toString()}`;
+    console.log("[Home] Generated login URL with redirect URI:", redirectUri);
     
     if (window.require) {
-      const { shell } = window.require('electron');
-      shell.openExternal(loginUrl);
+      try {
+        const { shell } = window.require('electron');
+        console.log("[Home] Opening URL with Electron shell.openExternal");
+        shell.openExternal(loginUrl);
+      } catch (error) {
+        console.error("[Home] Error opening URL with Electron:", error);
+        // Fall back to window.open as a last resort
+        window.open(loginUrl, '_blank');
+      }
     } else {
+      console.log("[Home] Opening URL with window.open");
       window.open(loginUrl, '_blank');
     }
   }

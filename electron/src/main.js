@@ -29,9 +29,11 @@ async function exchangeAuthCodeForToken(authCode) {
   const redirectUri = process.env.SPOTIFY_REDIRECT_URI || spotifyCredentials.redirectUri || 'spotwire://callback';
   
   if (!clientId || !clientSecret) {
-    console.error('Missing Spotify credentials');
+    console.error('Missing Spotify credentials for token exchange');
     return null;
   }
+  
+  console.log(`[Token Exchange] Using client ID: ${clientId.substring(0, 5)}... and redirect URI: ${redirectUri}`);
   
   const tokenUrl = 'https://accounts.spotify.com/api/token';
   const params = new URLSearchParams({
@@ -40,7 +42,9 @@ async function exchangeAuthCodeForToken(authCode) {
     redirect_uri: redirectUri,
   });
   const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+  
   try {
+    console.log('[Token Exchange] Sending request to Spotify API');
     const response = await fetch(tokenUrl, {
       method: 'POST',
       headers: {
@@ -49,10 +53,33 @@ async function exchangeAuthCodeForToken(authCode) {
       },
       body: params.toString(),
     });
+    
+    if (!response.ok) {
+      console.error(`[Token Exchange] Error response from Spotify: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      console.error(`[Token Exchange] Error body: ${errorText}`);
+      return { error: true, error_description: `Spotify API error: ${response.status} ${response.statusText}` };
+    }
+    
     const data = await response.json();
+    
+    if (!data.access_token) {
+      console.error('[Token Exchange] No access token in response', data);
+      return { error: true, error_description: 'No access token received from Spotify' };
+    }
+    
+    console.log('[Token Exchange] Successfully received token');
+    
+    // Store the refresh token for future use
+    if (data.refresh_token) {
+      console.log('[Token Exchange] Storing refresh token for future use');
+      spotifyCredentials.refreshToken = data.refresh_token;
+    }
+    
     return data;
   } catch (error) {
-    console.error('Error exchanging auth code:', error);
+    console.error('[Token Exchange] Error exchanging auth code:', error);
+    return { error: true, error_description: `Network error: ${error.message}` };
   }
 }
 
@@ -166,7 +193,54 @@ async function setupPythonEnvironment() {
       mainWindow.webContents.send('python-env-setup-progress', 'Starting Python environment setup...');
     }
     
-    const pythonDir = path.join(__dirname, '..', 'python');
+    // Create an organized folder structure
+    // In packaged app, use the user data directory which has write permissions
+    // In development, use the project directory
+    const userDataDir = app.getPath('userData');
+    const appRoot = app.isPackaged 
+      ? userDataDir
+      : path.resolve(__dirname, '../..');
+    
+    // Create a dedicated spotwire data directory
+    const spotWireDataDir = app.isPackaged
+      ? path.join(userDataDir, 'spotwire_data')
+      : path.resolve(__dirname, '../..', 'spotwire_data');
+    
+    // Create the spotwire data directory if it doesn't exist
+    if (!fs.existsSync(spotWireDataDir)) {
+      try {
+        fs.mkdirSync(spotWireDataDir, { recursive: true });
+        console.log('Created spotwire data directory:', spotWireDataDir);
+      } catch (error) {
+        console.error('Failed to create spotwire data directory:', error);
+        reject(error);
+        return;
+      }
+    }
+    
+    // Create dedicated directories for different components
+    const venvDir = path.join(spotWireDataDir, 'venv');
+    const pythonDir = path.join(spotWireDataDir, 'python');
+    
+    // Store paths in global variables for later use
+    global.spotWireDataDir = spotWireDataDir;
+    global.venvPath = venvDir;
+    
+    console.log('Spotwire data directory:', spotWireDataDir);
+    console.log('Virtual environment path:', venvDir);
+    console.log('Python directory:', pythonDir);
+    
+    // Create python directory if it doesn't exist
+    if (!fs.existsSync(pythonDir)) {
+      try {
+        fs.mkdirSync(pythonDir, { recursive: true });
+        console.log('Created python directory:', pythonDir);
+      } catch (error) {
+        console.error('Failed to create python directory:', error);
+        reject(error);
+        return;
+      }
+    }
 
     // Make setup script executable
     try {
@@ -176,10 +250,98 @@ async function setupPythonEnvironment() {
       // Continue anyway, as it might already be executable
     }
     
+    // Create environment variables with adjusted paths
+    const setupEnv = { 
+      ...process.env, 
+      PYTHONUNBUFFERED: '1',
+      VENV_PATH: global.venvPath  // Pass the venv path to the script
+    };
+    
+    // For Windows, we need a different approach
+    if (process.platform === 'win32') {
+      try {
+        // On Windows, create the virtual environment using Python directly
+        console.log('Creating virtual environment on Windows...');
+        
+        if (splashWindow) {
+          splashWindow.webContents.send('setup-progress', {
+            status: 'Installing required components...',
+            progress: 20,
+            message: 'Creating virtual environment...'
+          });
+        }
+        
+        // First make sure Python is available
+        execSync('python --version', { stdio: 'ignore' });
+        
+        // Create the virtual environment
+        execSync(`python -m venv "${venvDir}"`, { stdio: 'pipe' });
+        
+        if (splashWindow) {
+          splashWindow.webContents.send('setup-progress', {
+            status: 'Installing required components...',
+            progress: 40,
+            message: 'Installing packages...'
+          });
+        }
+        
+        // Install required packages
+        const pipPath = path.join(venvDir, 'Scripts', 'pip.exe');
+        execSync(`"${pipPath}" install --upgrade pip`, { stdio: 'pipe' });
+        execSync(`"${pipPath}" install --upgrade wheel setuptools`, { stdio: 'pipe' });
+        
+        if (splashWindow) {
+          splashWindow.webContents.send('setup-progress', {
+            status: 'Installing required components...',
+            progress: 60,
+            message: 'Installing spotdl and dependencies...'
+          });
+        }
+        
+        execSync(`"${pipPath}" install -r "${requirementsPath}"`, { stdio: 'pipe' });
+        
+        console.log('Virtual environment setup completed successfully');
+        
+        if (splashWindow) {
+          splashWindow.webContents.send('setup-progress', {
+            status: 'Setup Complete!',
+            progress: 100,
+            message: 'Starting app...'
+          });
+        }
+        
+        // Short delay to show completion before closing splash
+        setTimeout(() => {
+          resolve();
+        }, 1000);
+        
+        return;
+      } catch (error) {
+        console.error('Error setting up Python environment on Windows:', error);
+        
+        if (splashWindow) {
+          splashWindow.webContents.send('setup-progress', {
+            status: 'Setup Failed',
+            progress: 0,
+            message: `Error: ${error.message}`
+          });
+        }
+        
+        dialog.showErrorBox(
+          'Python Environment Setup Failed',
+          `Failed to set up the Python environment on Windows.\n\n${error.message}\n\nPlease make sure Python is installed properly.`
+        );
+        
+        reject(error);
+        return;
+      }
+    }
+    
+    // For macOS and Linux, use the bash script
     // Execute setup script with the requirements file path
     const setupProcess = spawn('bash', [setupScriptPath, requirementsPath], {
       cwd: pythonDir,
-      env: { ...process.env, PYTHONUNBUFFERED: '1' }  // Ensure unbuffered Python output
+      env: setupEnv
     });
     
     let output = '';
@@ -437,17 +599,79 @@ ipcMain.handle('test-spotify-credentials', async (event, credentials) => {
   }
 });
 
+// Add a function to refresh expired tokens
+async function refreshAccessToken(refreshToken) {
+  const clientId = process.env.SPOTIFY_CLIENT_ID || spotifyCredentials.clientId;
+  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET || spotifyCredentials.clientSecret;
+  
+  if (!clientId || !clientSecret) {
+    console.error('[Token Refresh] Missing Spotify credentials');
+    return null;
+  }
+  
+  if (!refreshToken) {
+    console.error('[Token Refresh] No refresh token provided');
+    return null;
+  }
+  
+  console.log('[Token Refresh] Attempting to refresh access token');
+  
+  const tokenUrl = 'https://accounts.spotify.com/api/token';
+  const params = new URLSearchParams({
+    grant_type: 'refresh_token',
+    refresh_token: refreshToken,
+  });
+  const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+  
+  try {
+    const response = await fetch(tokenUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${basicAuth}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: params.toString(),
+    });
+    
+    if (!response.ok) {
+      console.error(`[Token Refresh] Error response from Spotify: ${response.status} ${response.statusText}`);
+      return null;
+    }
+    
+    const data = await response.json();
+    console.log('[Token Refresh] Successfully refreshed access token');
+    
+    // Update the refresh token if a new one is provided
+    if (data.refresh_token) {
+      console.log('[Token Refresh] Updating stored refresh token');
+      spotifyCredentials.refreshToken = data.refresh_token;
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('[Token Refresh] Error refreshing token:', error);
+    return null;
+  }
+}
+
 // IPC handler for storing Spotify credentials
 ipcMain.on('set-spotify-credentials', (event, credentials) => {
   spotifyCredentials = {
     ...spotifyCredentials,
     ...credentials
   };
-  console.log('Spotify credentials updated');
+  console.log('[Main] Spotify credentials updated:', 
+    `clientId: ${spotifyCredentials.clientId ? 'set' : 'not set'}, ` +
+    `clientSecret: ${spotifyCredentials.clientSecret ? 'set' : 'not set'}, ` +
+    `refreshToken: ${spotifyCredentials.refreshToken ? 'set' : 'not set'}`
+  );
 });
 
 ipcMain.handle('select-download-folder', async () => {
+  const defaultFolder = getDefaultDownloadsFolder();
+  
   const { canceled, filePaths } = await dialog.showOpenDialog({
+    defaultPath: defaultFolder,
     properties: ['openDirectory']
   });
   if (canceled || filePaths.length === 0) {
@@ -458,14 +682,16 @@ ipcMain.handle('select-download-folder', async () => {
 
 // Listen for the download command execution IPC message
 ipcMain.on('execute-download-command', (event, { downloadId, trackUrl, defaultFolder, isPlaylist }) => {
-  // Get the app's root directory
-  const appRoot = app.isPackaged 
-    ? path.dirname(app.getAppPath())
-    : path.resolve(__dirname, '../..');
+  // Get the venv path from global variable or calculate it
+  const venvPath = global.venvPath || (
+    app.isPackaged 
+      ? path.join(app.getPath('userData'), 'spotwire_data', 'venv') 
+      : path.resolve(__dirname, '../..', 'spotwire_data', 'venv')
+  );
     
-  // Path for virtual environment
-  const venvPath = path.join(appRoot, 'venv');
   const venvActivatePath = path.join(venvPath, 'bin', 'activate');
+  
+  console.log('Using virtual environment at:', venvPath);
   
   // Check if venv exists
   if (!fs.existsSync(venvActivatePath)) {
@@ -522,7 +748,22 @@ ipcMain.on('execute-download-command', (event, { downloadId, trackUrl, defaultFo
   }
   
   // Construct the command to use the virtual environment
-  const command = `bash -c "source '${venvActivatePath}' && spotdl download '${trackUrl}' --output '${defaultFolder}'"`;
+  let command;
+  
+  if (process.platform === 'win32') {
+    // Windows requires a different approach to activate the virtual environment
+    const venvPythonPath = path.join(venvPath, 'Scripts', 'python.exe');
+    const spotdlModulePath = path.join(venvPath, 'Lib', 'site-packages', 'spotdl', '__main__.py');
+    
+    if (fs.existsSync(venvPythonPath) && fs.existsSync(spotdlModulePath)) {
+      command = `"${venvPythonPath}" -m spotdl download "${trackUrl}" --output "${defaultFolder}"`;
+    } else {
+      command = `"${venvPythonPath}" -m spotdl download "${trackUrl}" --output "${defaultFolder}"`;
+    }
+  } else {
+    // macOS and Linux
+    command = `bash -c "source '${venvActivatePath}' && spotdl download '${trackUrl}' --output '${defaultFolder}'"`;
+  }
   
   console.log("Executing command:", command);
   
@@ -653,18 +894,32 @@ function createMainWindow() {
     mainWindow.show();
   }
   
+  // Store a reference to splash window to safely close it
+  const splashWindowToClose = splashWindow;
+  
+  // Clear the global reference first to prevent any new operations on it
+  splashWindow = null;
+  
   // Close splash window after main window is shown
-  if (splashWindow) {
-    setTimeout(() => {
-      splashWindow.close();
-      splashWindow = null;
-    }, 500);
+  if (splashWindowToClose && !splashWindowToClose.isDestroyed()) {
+    try {
+      splashWindowToClose.close();
+    } catch (error) {
+      console.error('Error closing splash window:', error);
+    }
   }
 }
 
-app.whenReady().then(async () => {
-  // Register the custom protocol for OAuth callbacks.
+// Register the custom protocol handler immediately for macOS
+if (process.platform === 'darwin') {
   app.setAsDefaultProtocolClient('spotwire');
+}
+
+app.whenReady().then(async () => {
+  // Register the custom protocol for OAuth callbacks on Windows and Linux
+  if (process.platform !== 'darwin') {
+    app.setAsDefaultProtocolClient('spotwire');
+  }
   
   createSplashWindow();
   
@@ -728,38 +983,220 @@ app.whenReady().then(async () => {
 // Listen for custom protocol calls (OAuth callback)
 app.on('open-url', async (event, url) => {
   event.preventDefault();
-  console.log('Received URL:', url);
-  
+  console.log('[open-url] Received URL:', url);
+
   // Extract the auth code from the callback URL.
   const urlObj = new URL(url);
   const authCode = urlObj.searchParams.get('code');
-  console.log("Extracted auth code:", authCode);
+  
+  if (!authCode) {
+    console.error('[open-url] Failed to extract auth code from URL:', url);
+    return;
+  }
+  console.log("[open-url] Extracted auth code:", authCode.substring(0, 10) + "...");
+
+  // Check if credentials are available
+  if (!spotifyCredentials.clientId || !spotifyCredentials.clientSecret) {
+    console.error('[open-url] Missing Spotify credentials - redirecting to config page');
+    
+    // Find a window to redirect
+    let targetWindow = mainWindow;
+    if (!targetWindow || targetWindow.isDestroyed() || !targetWindow.isVisible()) {
+      targetWindow = BrowserWindow.getAllWindows().find(w => !w.isDestroyed() && w.isVisible());
+    }
+    
+    if (targetWindow) {
+      // Redirect to the config page instead of showing an error
+      console.log('[open-url] Redirecting to Spotify config page');
+      targetWindow.webContents.executeJavaScript("window.location.hash = '#spotify-config';");
+      targetWindow.focus();
+    } else {
+      // If no window is available, still need to show an error
+      dialog.showErrorBox('Configuration Required', 
+        'Spotify API credentials are required. Please restart the application and configure your Spotify credentials.');
+    }
+    return;
+  }
+
+  // Log the current client ID and secret state (redacted for security)
+  console.log("[open-url] Current credentials state - Client ID exists:", !!spotifyCredentials.clientId, 
+              "Client Secret exists:", !!spotifyCredentials.clientSecret);
   
   // Exchange the auth code for an access token.
-  const tokenData = await exchangeAuthCodeForToken(authCode);
-  console.log("Token data received:", !!tokenData);
-  
-  if (!tokenData) {
-    console.error("Failed to exchange auth code for token");
+  let tokenData;
+  try {
+    tokenData = await exchangeAuthCodeForToken(authCode);
+  } catch (error) {
+    console.error('[open-url] Error during exchangeAuthCodeForToken:', error);
+    
+    // Find a window to redirect
+    let targetWindow = mainWindow;
+    if (!targetWindow || targetWindow.isDestroyed() || !targetWindow.isVisible()) {
+      targetWindow = BrowserWindow.getAllWindows().find(w => !w.isDestroyed() && w.isVisible());
+    }
+    
+    if (targetWindow) {
+      // Redirect to the config page
+      console.log('[open-url] Error exchanging token - redirecting to Spotify config page');
+      targetWindow.webContents.executeJavaScript("window.location.hash = '#spotify-config';");
+      targetWindow.focus();
+    } else {
+      dialog.showErrorBox('Authentication Error', `Failed to exchange authorization code for token: ${error.message}`);
+    }
     return;
   }
   
-  const accessToken = tokenData.access_token;
-  console.log("Access token received:", !!accessToken);
-  
-  // Send the access token to the renderer process via IPC.
-  const [win] = BrowserWindow.getAllWindows();
-  if (win && accessToken) {
-    console.log("Sending access token to renderer");
-    win.webContents.send('access-token', accessToken);
+  // Handle error response from token exchange
+  if (tokenData && tokenData.error) {
+    console.error(`[open-url] Token exchange returned error: ${tokenData.error_description}`);
     
+    // Find a window to redirect
+    let targetWindow = mainWindow;
+    if (!targetWindow || targetWindow.isDestroyed() || !targetWindow.isVisible()) {
+      targetWindow = BrowserWindow.getAllWindows().find(w => !w.isDestroyed() && w.isVisible());
+    }
+    
+    if (targetWindow) {
+      // Redirect to the config page
+      console.log('[open-url] Token exchange error - redirecting to Spotify config page');
+      targetWindow.webContents.executeJavaScript("window.location.hash = '#spotify-config';");
+      targetWindow.focus();
+    } else {
+      dialog.showErrorBox('Authentication Failed', tokenData.error_description);
+    }
+    return;
+  }
+  
+  console.log("[open-url] Token data received:", !!tokenData);
+
+  if (!tokenData || !tokenData.access_token) {
+    const errorMessage = 'Failed to exchange auth code for token. Response did not contain access_token.';
+    console.error(`[open-url] ${errorMessage}`);
+    
+    // Find a window to redirect
+    let targetWindow = mainWindow;
+    if (!targetWindow || targetWindow.isDestroyed() || !targetWindow.isVisible()) {
+      targetWindow = BrowserWindow.getAllWindows().find(w => !w.isDestroyed() && w.isVisible());
+    }
+    
+    if (targetWindow) {
+      // Redirect to the config page
+      console.log('[open-url] No access token - redirecting to Spotify config page');
+      targetWindow.webContents.executeJavaScript("window.location.hash = '#spotify-config';");
+      targetWindow.focus();
+    } else {
+      // Check credentials and show more specific error if needed
+      if (!spotifyCredentials.clientId || !spotifyCredentials.clientSecret) {
+        dialog.showErrorBox('Authentication Failed', 
+          'Spotify API credentials are missing. Please go to the Spotify Configuration page and enter valid credentials.');
+      } else {
+        dialog.showErrorBox('Authentication Failed', errorMessage);
+      }
+    }
+    return;
+  }
+
+  const accessToken = tokenData.access_token;
+  console.log("[open-url] Access token received:", accessToken.substring(0, 10) + "...");
+  
+  // Store refresh token for future use if available
+  if (tokenData.refresh_token) {
+    console.log("[open-url] Refresh token received, storing for future use");
+    spotifyCredentials.refreshToken = tokenData.refresh_token;
+  }
+
+  // Send the access token to the renderer process via IPC.
+  // Try to find the main window more reliably
+  let targetWindow = mainWindow;
+  
+  if (!targetWindow || targetWindow.isDestroyed() || !targetWindow.isVisible()) {
+    console.log("[open-url] Main window reference not valid, searching for an alternative window");
+    targetWindow = BrowserWindow.getAllWindows().find(w => !w.isDestroyed() && w.isVisible());
+  }
+
+  if (targetWindow) {
+    console.log("[open-url] Found target window. Sending access token to renderer...");
+    targetWindow.webContents.send('access-token', accessToken);
+
     // Focus the window to ensure the user sees the app after authentication
-    win.focus();
+    targetWindow.focus();
   } else {
-    console.error("No window found or no access token to send");
+    console.error("[open-url] No suitable window found to send access token to.");
+    // Create a temporary window to show the error message if no window is found
+    dialog.showErrorBox('Application Error', 'Could not find the main application window to complete login.');
   }
 });
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
+});
+
+// Function to get or create the default downloads folder
+function getDefaultDownloadsFolder() {
+  // Use the spotwire data directory or create a new path
+  const spotWireDataDir = global.spotWireDataDir || (
+    app.isPackaged 
+      ? path.join(app.getPath('userData'), 'spotwire_data')
+      : path.resolve(__dirname, '../..', 'spotwire_data')
+  );
+  
+  // Create a downloads folder within the data directory
+  const downloadsFolder = path.join(spotWireDataDir, 'downloads');
+  
+  // Create it if it doesn't exist
+  if (!fs.existsSync(downloadsFolder)) {
+    try {
+      fs.mkdirSync(downloadsFolder, { recursive: true });
+      console.log('Created downloads directory:', downloadsFolder);
+    } catch (error) {
+      console.error('Failed to create downloads directory:', error);
+      // Fall back to user's downloads folder if we can't create our own
+      return app.getPath('downloads');
+    }
+  }
+  
+  return downloadsFolder;
+}
+
+// Expose the function to get the default downloads folder
+ipcMain.handle('get-default-downloads-folder', async () => {
+  return getDefaultDownloadsFolder();
+});
+
+// IPC handler for refreshing an expired token
+ipcMain.handle('refresh-access-token', async () => {
+  console.log('[IPC] Refresh access token request received');
+  
+  if (!spotifyCredentials.refreshToken) {
+    console.error('[IPC] Cannot refresh token: No refresh token available');
+    return { 
+      success: false, 
+      error: 'No refresh token available. Please log in again.' 
+    };
+  }
+  
+  try {
+    const refreshedData = await refreshAccessToken(spotifyCredentials.refreshToken);
+    
+    if (!refreshedData || !refreshedData.access_token) {
+      console.error('[IPC] Token refresh failed: No access token received');
+      return { 
+        success: false, 
+        error: 'Failed to refresh access token. Please log in again.' 
+      };
+    }
+    
+    console.log('[IPC] Token refreshed successfully');
+    return {
+      success: true,
+      accessToken: refreshedData.access_token,
+      expiresIn: refreshedData.expires_in
+    };
+  } catch (error) {
+    console.error('[IPC] Error refreshing token:', error);
+    return {
+      success: false,
+      error: `Error refreshing token: ${error.message}`
+    };
+  }
 });
