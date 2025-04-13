@@ -8,14 +8,7 @@ function Home() {
     
     if (token) {
       // Log if token exists, but don't redirect automatically
-      console.log("[Home] Token found, user is logged in.");
-      
-      // Force redirect to profile after a short delay 
-      // This helps ensure the app is fully loaded before redirecting
-      setTimeout(() => {
-        console.log("[Home] Redirecting to profile page...");
-        window.location.hash = '#profile';
-      }, 100);
+      console.log("[Home] Token found, but waiting for user to click login button.");
     } else {
       console.log("[Home] No token found in localStorage");
     }
