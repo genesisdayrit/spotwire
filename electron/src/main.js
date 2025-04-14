@@ -91,7 +91,8 @@ function createSplashWindow() {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
-    }
+    },
+    icon: path.join(__dirname, 'assets/spotwire_logo_v1.png')
   });
   
   splashWindow.loadFile('src/splash.html');
@@ -109,7 +110,8 @@ function createWindow() {
       nodeIntegration: true,
       contextIsolation: false,
     },
-    show: false // Don't show until setup is done
+    show: false, // Don't show until setup is done
+    icon: path.join(__dirname, 'assets/spotwire_logo_v1.png')
   });
   
   mainWindow.loadFile('src/index.html');
@@ -178,6 +180,11 @@ app.whenReady().then(async () => {
   // Register the custom protocol for OAuth callbacks on Windows and Linux
   if (process.platform !== 'darwin') {
     app.setAsDefaultProtocolClient('spotwire');
+  }
+  
+  // Set the dock icon on macOS
+  if (process.platform === 'darwin') {
+    app.dock.setIcon(path.join(__dirname, 'assets/spotwire_logo_v1.png'));
   }
   
   createSplashWindow();
