@@ -18,7 +18,7 @@ To download, click this banner below:
 ### Requirements:
 (these should all be included with the packaged app download):
 - Node.js
-- Python3 or higher
+- Python3 or higher (for interacting with the spotDL package)
 - spotDL (included in packaged version)
 - FFmpeg (included in packaged version)
 - Spotify developer credentials (follow instructions at https://developer.spotify.com/documentation/web-api)
