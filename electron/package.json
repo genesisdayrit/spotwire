@@ -6,10 +6,9 @@
     "start": "electron .",
     "build:css": "tailwindcss -i ./src/tailwind.css -o ./src/styles.css --watch",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder --mac --linux",
+    "dist": "electron-builder --mac",
     "dist:mac": "electron-builder --mac",
-    "dist:linux": "electron-builder --linux",
-    "publish": "electron-builder --publish always --mac --linux"
+    "publish": "electron-builder --publish always --mac"
   },
   "keywords": [],
   "author": "spotwire  <noreply@example.com>",
@@ -51,13 +50,7 @@
     },
     "mac": {
       "category": "public.app-category.music",
-      "target": ["dmg", "zip"],
-      "icon": "src/assets/spotwire_logo_v1.png"
-    },
-    "linux": {
-      "target": ["AppImage", "deb"],
-      "category": "Audio",
-      "maintainer": "spotwire  <noreply@example.com>",
+      "target": ["dmg"],
       "icon": "src/assets/spotwire_logo_v1.png"
     },
     "publish": {
