@@ -18,6 +18,9 @@ function LikedSongs() {
   const [searchTerm, setSearchTerm] = useState("");
   const containerRef = useRef(null);
   
+  // Add state for custom dialog
+  const [showDialog, setShowDialog] = useState(false);
+  
   // Add the downloads context
   const { downloads, addDownload, updateDownload } = window.useDownloads();
   
@@ -61,18 +64,7 @@ function LikedSongs() {
     try {
       const defaultFolder = localStorage.getItem("default_downloads_folder");
       if (!defaultFolder) {
-        if (window.customDialog) {
-          window.customDialog.show({
-            title: "No Default Download Folder",
-            message: "No default download folder set. Please set it in Settings.",
-            buttons: [
-              { label: "Go to Settings", action: () => { window.location.hash = "#settings"; } },
-              { label: "Cancel", action: () => {} }
-            ]
-          });
-        } else {
-          alert("No default download folder set. Please set it in Settings.");
-        }
+        setShowDialog(true);
         return;
       }
       
@@ -107,6 +99,11 @@ function LikedSongs() {
     }
   }
 
+  function handleGoToSettings() {
+    setShowDialog(false);
+    window.location.hash = "#settings";
+  }
+
   function formatDuration(ms) {
     const minutes = Math.floor(ms / 60000);
     const seconds = ((ms % 60000) / 1000).toFixed(0);
@@ -115,6 +112,22 @@ function LikedSongs() {
 
   return (
     <div className="liked-songs-container" ref={containerRef}>
+      {showDialog && (
+        <div className="custom-dialog-overlay">
+          <div className="custom-dialog">
+            <h3>No Default Download Folder</h3>
+            <p>No default download folder set. Please set it in Settings.</p>
+            <div className="dialog-buttons">
+              <button onClick={() => setShowDialog(false)} className="secondary-button">
+                Cancel
+              </button>
+              <button onClick={handleGoToSettings} className="primary-button">
+                Go to Settings
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="liked-songs-header">
         <button className="back-button" onClick={handleBackToProfile}>
           &larr; Back to Profile

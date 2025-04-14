@@ -13,6 +13,9 @@ function PlaylistDetail({ playlistId }) {
   // New state to track the full playlist download
   const [playlistDownloadInProgress, setPlaylistDownloadInProgress] = useState(false);
   const [playlistDownloadId, setPlaylistDownloadId] = useState(null);
+  
+  // Add state for custom dialog
+  const [showDialog, setShowDialog] = useState(false);
 
   const accessToken = localStorage.getItem("spotify_access_token");
   const { downloads, addDownload, updateDownload } = window.useDownloads();
@@ -93,18 +96,7 @@ function PlaylistDetail({ playlistId }) {
   function handleDownload(track) {
     const defaultFolder = localStorage.getItem("default_downloads_folder");
     if (!defaultFolder) {
-      if (window.customDialog) {
-        window.customDialog.show({
-          title: "No Default Download Folder",
-          message: "No default download folder set. Please set it in Settings.",
-          buttons: [
-            { label: "Go to Settings", action: () => { window.location.hash = "#settings"; } },
-            { label: "Cancel", action: () => {} }
-          ]
-        });
-      } else {
-        alert("No default download folder set. Please set it in Settings.");
-      }
+      setShowDialog(true);
       return;
     }
     if (!track.external_urls || !track.external_urls.spotify) {
@@ -129,18 +121,7 @@ function PlaylistDetail({ playlistId }) {
   function handleDownloadPlaylist() {
     const defaultFolder = localStorage.getItem("default_downloads_folder");
     if (!defaultFolder) {
-      if (window.customDialog) {
-        window.customDialog.show({
-          title: "No Default Download Folder",
-          message: "No default download folder set. Please set it in Settings.",
-          buttons: [
-            { label: "Go to Settings", action: () => { window.location.hash = "#settings"; } },
-            { label: "Cancel", action: () => {} }
-          ]
-        });
-      } else {
-        alert("No default download folder set. Please set it in Settings.");
-      }
+      setShowDialog(true);
       return;
     }
     // If not already in progress, start the download
@@ -177,6 +158,11 @@ function PlaylistDetail({ playlistId }) {
     window.location.hash = "#profile";
   }
 
+  function handleGoToSettings() {
+    setShowDialog(false);
+    window.location.hash = "#settings";
+  }
+
   function formatDuration(ms) {
     const minutes = Math.floor(ms / 60000);
     const seconds = ((ms % 60000) / 1000).toFixed(0);
@@ -196,6 +182,22 @@ function PlaylistDetail({ playlistId }) {
 
   return (
     <div className="liked-songs-container">
+      {showDialog && (
+        <div className="custom-dialog-overlay">
+          <div className="custom-dialog">
+            <h3>No Default Download Folder</h3>
+            <p>No default download folder set. Please set it in Settings.</p>
+            <div className="dialog-buttons">
+              <button onClick={() => setShowDialog(false)} className="secondary-button">
+                Cancel
+              </button>
+              <button onClick={handleGoToSettings} className="primary-button">
+                Go to Settings
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="liked-songs-header">
         <button className="back-button" onClick={handleBackToProfile}>
           &larr; Back to Profile
