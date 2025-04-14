@@ -465,8 +465,12 @@
         return (
           <>
             {Component}
-            <window.FloatingDownloadsButton onToggle={() => setShowDownloads(prev => !prev)} />
-            {showDownloads && <window.DownloadPanel onClose={() => setShowDownloads(false)} />}
+            {page !== "" && page !== "#" && (
+              <>
+                <window.FloatingDownloadsButton onToggle={() => setShowDownloads(prev => !prev)} />
+                {showDownloads && <window.DownloadPanel onClose={() => setShowDownloads(false)} />}
+              </>
+            )}
           </>
         );
       }
