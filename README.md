@@ -1,8 +1,8 @@
 # spotwire
 
-a macOS application to help you download your spotify music.
+a macOS application to help download your spotify music.
 
-connect to your spotify profile and find songs to download as mp3's
+connect to your spotify profile and find songs to download as mp3's.
 
 
 ---
