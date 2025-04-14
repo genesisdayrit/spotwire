@@ -9,7 +9,7 @@ connect to your spotify profile and find songs to download as mp3's.
 
 ### Download 
 
-To download, click this banner below:
+To download, click this banner below and find the `.dmg` file in the assets section:
 
 [![Latest Release](https://img.shields.io/github/v/release/genesisdayrit/spotwire)](https://github.com/genesisdayrit/spotwire/releases/latest)
 
