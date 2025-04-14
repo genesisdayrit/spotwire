@@ -35,3 +35,7 @@ If you would like to clone the repo and run the unpackaged version:
 ---
 
 Will slowly improve features over time. Feel free to request anything. Enjoy!
+
+---
+
+> Note Users are responsible for their actions and potential legal consequences. We do not support unauthorized downloading of copyrighted material and take no responsibility for user actions.
