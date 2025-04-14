@@ -98,17 +98,38 @@ function SpotifyConfig() {
     
     // Add a small delay to ensure credentials are saved before proceeding
     setTimeout(() => {
-      // Check if we already have a token
-      const token = localStorage.getItem('spotify_access_token');
-      
-      if (token) {
-        // If token exists, go directly to profile
-        console.log('[SpotifyConfig] Token exists, navigating to profile');
-        window.location.hash = '#profile';
+      // If we have an auth service, use it to check token state
+      if (window.AuthService) {
+        // Try to get an access token (will refresh if needed)
+        window.AuthService.getAccessToken().then(token => {
+          if (token) {
+            // If token exists and is valid, go directly to profile
+            console.log('[SpotifyConfig] Valid token obtained, navigating to profile');
+            window.location.hash = '#profile';
+          } else {
+            // No valid token, start OAuth flow
+            console.log('[SpotifyConfig] No valid token, starting OAuth flow');
+            window.AuthService.startOAuthFlow();
+          }
+        }).catch(error => {
+          console.error('[SpotifyConfig] Error checking token state:', error);
+          // Start OAuth flow as fallback
+          console.log('[SpotifyConfig] Starting OAuth flow due to error');
+          window.AuthService.startOAuthFlow();
+        });
       } else {
-        // Start OAuth flow directly without going to home page
-        console.log('[SpotifyConfig] No token found, starting OAuth flow');
-        startOAuthFlow();
+        // Fallback to original behavior if auth service not available
+        const token = localStorage.getItem('spotify_access_token');
+        
+        if (token) {
+          // If token exists, go directly to profile
+          console.log('[SpotifyConfig] Token exists, navigating to profile');
+          window.location.hash = '#profile';
+        } else {
+          // Start OAuth flow directly without going to home page
+          console.log('[SpotifyConfig] No token found, starting OAuth flow');
+          startOAuthFlow();
+        }
       }
     }, 300);
   }

@@ -14,6 +14,8 @@
   </head>
   <body>
     <div id="app"></div>
+    <!-- Load auth service first -->
+    <script type="text/babel" src="./auth.js"></script>
     <!-- Load external components -->
     <script type="text/babel" src="./components/Settings.js"></script>
     <script type="text/babel" src="./components/Home.js"></script>
@@ -383,29 +385,60 @@
           if (ipcRenderer) {
             console.log("[Main App] Setting up access-token listener");
             
-            const handleAccessToken = (event, token) => {
-              if (!token) {
-                console.error("[Main App] Received empty access token");
+            const handleAccessToken = (event, tokenData) => {
+              if (!tokenData) {
+                console.error("[Main App] Received empty token data");
                 return;
               }
               
-              console.log("[Main App] Access token received in renderer", !!token, token.substring(0, 10) + "...");
-              try {
+              // Check if we received the full token data object or just the access token (for backward compatibility)
+              let token;
+              if (typeof tokenData === 'string') {
+                // Legacy format - just the access token as string
+                console.log("[Main App] Received access token in legacy format");
+                token = tokenData;
                 localStorage.setItem("spotify_access_token", token);
-                console.log("[Main App] Token saved to localStorage");
+              } else {
+                // New format - full token data object
+                console.log("[Main App] Received full token data object");
                 
-                // Update the context with the new token
-                updateAccessToken(token);
-                console.log("[Main App] Token passed to context updater");
+                if (!tokenData.access_token) {
+                  console.error("[Main App] Token data missing access_token property");
+                  return;
+                }
                 
-                // Add small delay to ensure state is updated before navigation
-                setTimeout(() => {
-                  console.log("[Main App] Navigating to profile after token received");
-                  window.location.hash = "#profile";
-                }, 300);
-              } catch (error) {
-                console.error("[Main App] Error processing access token:", error);
+                token = tokenData.access_token;
+                
+                // Store token data using our auth service if available
+                if (window.AuthService) {
+                  window.AuthService.storeTokenData(tokenData);
+                } else {
+                  // Fallback storage
+                  localStorage.setItem("spotify_access_token", token);
+                  
+                  if (tokenData.refresh_token) {
+                    localStorage.setItem("spotify_refresh_token", tokenData.refresh_token);
+                  }
+                  
+                  if (tokenData.expires_in) {
+                    const expiresAt = Date.now() + (tokenData.expires_in * 1000);
+                    localStorage.setItem("spotify_token_expires_at", expiresAt.toString());
+                  }
+                }
               }
+              
+              console.log("[Main App] Access token received in renderer", !!token, token.substring(0, 10) + "...");
+              console.log("[Main App] Token saved to localStorage");
+              
+              // Update the context with the new token
+              updateAccessToken(token);
+              console.log("[Main App] Token passed to context updater");
+              
+              // Add small delay to ensure state is updated before navigation
+              setTimeout(() => {
+                console.log("[Main App] Navigating to profile after token received");
+                window.location.hash = "#profile";
+              }, 300);
             };
             
             // Remove any existing listeners to avoid duplicates
@@ -428,13 +461,38 @@
           // Skip if no ipcRenderer or not in Electron
           if (!ipcRenderer) return;
           
-          // Global function to handle token expiration - redirects to login
-          window.handleTokenExpiration = () => {
-            console.log("[Main App] Token expired, redirecting to login");
-            // Clear the invalid token
-            localStorage.removeItem("spotify_access_token");
+          // Global function to handle token expiration
+          window.handleTokenExpiration = async () => {
+            console.log("[Main App] Token expired, attempting refresh");
+            
+            // First, try to get a valid token using our auth service
+            if (window.AuthService) {
+              try {
+                const token = await window.AuthService.getAccessToken();
+                if (token) {
+                  console.log("[Main App] Token successfully refreshed");
+                  // Update the global token
+                  updateAccessToken(token);
+                  return true;
+                }
+              } catch (error) {
+                console.error("[Main App] Error during token refresh:", error);
+              }
+            }
+            
+            // If refresh failed or auth service not available, log out
+            console.log("[Main App] Token refresh failed, redirecting to login");
+            // Clear the invalid tokens
+            if (window.AuthService) {
+              window.AuthService.logout();
+            } else {
+              localStorage.removeItem("spotify_access_token");
+              localStorage.removeItem("spotify_refresh_token");
+              localStorage.removeItem("spotify_token_expires_at");
+            }
             // Navigate back to home for re-login
             window.location.hash = "#";
+            return false;
           };
         }, []);
 

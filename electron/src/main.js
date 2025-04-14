@@ -79,6 +79,60 @@ async function exchangeAuthCodeForToken(authCode) {
   }
 }
 
+// Add new function for refreshing tokens
+async function refreshSpotifyToken(refreshToken) {
+  const clientId = process.env.SPOTIFY_CLIENT_ID || spotifyCredentials.clientId;
+  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET || spotifyCredentials.clientSecret;
+  
+  if (!clientId || !clientSecret) {
+    console.error('[Token Refresh] Missing Spotify credentials for token refresh');
+    return { error: true, error_description: 'Missing Spotify credentials' };
+  }
+  
+  console.log('[Token Refresh] Attempting to refresh token');
+  
+  const tokenUrl = 'https://accounts.spotify.com/api/token';
+  const params = new URLSearchParams({
+    grant_type: 'refresh_token',
+    refresh_token: refreshToken,
+  });
+  const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+  
+  try {
+    const response = await fetch(tokenUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${basicAuth}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: params.toString(),
+    });
+    
+    if (!response.ok) {
+      console.error(`[Token Refresh] Error response from Spotify: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      console.error(`[Token Refresh] Error body: ${errorText}`);
+      return { error: true, error_description: `Spotify API error: ${response.status} ${response.statusText}` };
+    }
+    
+    const data = await response.json();
+    
+    if (!data.access_token) {
+      console.error('[Token Refresh] No access token in response', data);
+      return { error: true, error_description: 'No access token received from Spotify' };
+    }
+    
+    console.log('[Token Refresh] Successfully refreshed token');
+    
+    // Note: The refresh token response doesn't include a new refresh token unless rotation is enabled
+    // Make sure to retain the existing refresh token when saving this response
+    return data;
+  } catch (error) {
+    console.error('[Token Refresh] Error refreshing token:', error);
+    return { error: true, error_description: `Network error: ${error.message}` };
+  }
+}
+
 // Create splash window function
 function createSplashWindow() {
   splashWindow = new BrowserWindow({
@@ -376,7 +430,8 @@ app.on('open-url', async (event, url) => {
 
   if (targetWindow) {
     console.log("[open-url] Found target window. Sending access token to renderer...");
-    targetWindow.webContents.send('access-token', accessToken);
+    // Send the full token data object instead of just the access token
+    targetWindow.webContents.send('access-token', tokenData);
 
     // Focus the window to ensure the user sees the app after authentication
     targetWindow.focus();
@@ -647,5 +702,20 @@ autoUpdater.on('update-downloaded', () => {
 autoUpdater.on('error', (err) => {
   if (mainWindow) {
     mainWindow.webContents.send('update-error', err);
+  }
+});
+
+// In your ipcMain setup section, add this handler:
+ipcMain.handle('refresh-spotify-token', async (event, { refreshToken }) => {
+  if (!refreshToken) {
+    console.error('[IPC] Missing refresh token in request');
+    return { error: true, error_description: 'Missing refresh token' };
+  }
+  
+  try {
+    return await refreshSpotifyToken(refreshToken);
+  } catch (error) {
+    console.error('[IPC] Error during token refresh:', error);
+    return { error: true, error_description: `Error: ${error.message}` };
   }
 });
