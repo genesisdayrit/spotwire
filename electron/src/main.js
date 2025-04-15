@@ -673,7 +673,7 @@ ipcMain.on('execute-download-command', (event, { downloadId, trackUrl, defaultFo
         message: 'Download in progress... This may take a while for large files or playlists.'
       });
     }
-  }, 30000); // 30 seconds
+  }, 900000); // 15 minutes
 
   // Clean up the timeout when done
   downloadProcess.on('exit', () => {
