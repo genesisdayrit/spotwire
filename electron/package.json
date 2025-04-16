@@ -51,7 +51,13 @@
     "mac": {
       "category": "public.app-category.music",
       "target": ["dmg"],
-      "icon": "src/assets/spotwire_logo_v1.png"
+      "icon": "src/assets/spotwire_logo_v1.png",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "identity": "Genesis Dayrit (73U2UAVX9B)",
+      "notarize": {
+        "teamId": "73U2UAVX9B"
+      }
     },
     "publish": {
       "provider": "github",
