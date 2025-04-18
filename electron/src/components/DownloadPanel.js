@@ -1,5 +1,5 @@
 // src/components/DownloadPanel.js
-// This component uses the global useDownloads hook (make sure it’s exposed via window.useDownloads in index.html)
+// This component uses the global useDownloads hook (make sure it's exposed via window.useDownloads in index.html)
 
 function DownloadPanel({ onClose }) {
   const { downloads } = window.useDownloads();
@@ -19,7 +19,14 @@ function DownloadPanel({ onClose }) {
           {downloads.map(dl => (
             <tr key={dl.downloadId}>
               <td>{dl.trackName} - {dl.artist}</td>
-              <td>{dl.status}</td>
+              <td>
+                {dl.status}
+                {dl.status === "Failed" && dl.error && (
+                  <span title={dl.error} style={{ color: 'red', marginLeft: '5px', cursor: 'help' }}>
+                    (details)
+                  </span>
+                )}
+              </td>
               <td>{new Date(dl.startTime).toLocaleTimeString()}</td>
               <td>{dl.elapsed ? dl.elapsed : '-'}</td>
             </tr>
