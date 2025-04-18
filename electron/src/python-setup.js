@@ -105,7 +105,12 @@ function checkFFmpeg() {
     
     // Fall back to system ffmpeg if bundled one is not found
     console.log('Bundled FFmpeg not found, checking system installation');
-    execSync('ffmpeg -version', { stdio: 'ignore' });
+    // Ensure Homebrew paths are included for the check
+    const envWithPath = {
+      ...process.env,
+      PATH: `${process.env.PATH}:/usr/local/bin:/opt/homebrew/bin`
+    };
+    execSync('ffmpeg -version', { stdio: 'ignore', env: envWithPath });
     return true;
   } catch (error) {
     console.error('FFmpeg check failed:', error.message);
