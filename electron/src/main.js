@@ -598,7 +598,15 @@ ipcMain.on('execute-download-command', (event, { downloadId, trackUrl, defaultFo
     }
   } else {
     // macOS and Linux
-    command = `bash -c "source '${venvActivatePath}' && spotdl download '${trackUrl}' --output '${defaultFolder}'"`;
+    let ffmpegFlag = '';
+    
+    // If we have a confirmed path to ffmpeg, add it as an explicit argument to spotdl
+    if (global.ffmpegPath && fs.existsSync(global.ffmpegPath)) {
+      ffmpegFlag = ` --ffmpeg "${global.ffmpegPath}"`;
+      console.log(`Using explicit FFmpeg path: ${global.ffmpegPath}`);
+    }
+    
+    command = `bash -c "source '${venvActivatePath}' && spotdl download '${trackUrl}' --output '${defaultFolder}'${ffmpegFlag}"`;
   }
   
   console.log("Executing command:", command);
@@ -650,6 +658,26 @@ ipcMain.on('execute-download-command', (event, { downloadId, trackUrl, defaultFo
               console.error('Failed to remove venv directory:', error);
             }
           }
+        });
+      } 
+      // Check if this might be an FFmpeg-related error
+      else if (stderr.includes('ffmpeg') || stderr.toLowerCase().includes('command not found')) {
+        // Show a more specific error dialog for FFmpeg issues
+        dialog.showMessageBox({
+          type: 'warning',
+          title: 'FFmpeg Not Found',
+          message: 'FFmpeg is required but could not be found or executed.',
+          detail: `This might be due to permission issues or compatibility with Mac. 
+                  
+Please try the following:
+
+1. Install FFmpeg using Homebrew: 
+   - Open Terminal
+   - Run: brew install ffmpeg
+   
+2. Restart the Spotwire application`,
+          buttons: ['OK'],
+          defaultId: 0
         });
       }
     }

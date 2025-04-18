@@ -109,9 +109,31 @@ function checkFFmpeg() {
     const envWithPath = {
       ...process.env,
       PATH: `${process.env.PATH}:/usr/local/bin:/opt/homebrew/bin`
-    };
-    execSync('ffmpeg -version', { stdio: 'ignore', env: envWithPath });
-    return true;
+    };me
+    
+    // Try to locate FFmpeg in common directories
+    const commonFFmpegPaths = [
+      '/opt/homebrew/bin/ffmpeg',     // M1 Mac Homebrew location
+      '/usr/local/bin/ffmpeg',        // Intel Mac / standard Homebrew location
+      '/usr/bin/ffmpeg'               // System location
+    ];
+    
+    for (const ffPath of commonFFmpegPaths) {
+      if (fs.existsSync(ffPath)) {
+        console.log(`Found system FFmpeg at: ${ffPath}`);
+        global.ffmpegPath = ffPath;
+        return true;
+      }
+    }
+    
+    // If we couldn't find it in common paths, try generic command
+    try {
+      execSync('ffmpeg -version', { stdio: 'ignore', env: envWithPath });
+      return true;
+    } catch (ffError) {
+      console.error('FFmpeg check failed:', ffError.message);
+      return false;
+    }
   } catch (error) {
     console.error('FFmpeg check failed:', error.message);
     return false;
