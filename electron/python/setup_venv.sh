@@ -37,18 +37,41 @@ if [ ! -f "$REQUIREMENTS_FILE" ]; then
     exit 1
 fi
 
-# Check if Python 3 is installed and get version
-if ! command -v python3 &> /dev/null; then
-    echo "Error: Python 3 is not installed. Please install Python 3 and try again."
-    exit 1
+# Find the best available Python version (prefer 3.10+)
+PYTHON_CMD=""
+
+# Check for specific Python versions in order of preference
+for ver in python3.12 python3.11 python3.10; do
+    if command -v $ver &> /dev/null; then
+        PYTHON_CMD=$ver
+        echo "Found preferred Python: $ver"
+        break
+    fi
+done
+
+# Fall back to python3 if no specific version found
+if [ -z "$PYTHON_CMD" ]; then
+    if command -v python3 &> /dev/null; then
+        PYTHON_CMD=python3
+    else
+        echo "Error: Python 3 is not installed. Please install Python 3.10 or newer and try again."
+        exit 1
+    fi
 fi
 
 # Check Python version
-PYTHON_VERSION=$(python3 --version | cut -d' ' -f2)
+PYTHON_VERSION=$($PYTHON_CMD --version | cut -d' ' -f2)
 PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
 PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
 
-echo "Detected Python version: $PYTHON_VERSION"
+echo "Using Python: $PYTHON_CMD (version $PYTHON_VERSION)"
+
+# Verify Python version is 3.10 or higher
+if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 10 ]); then
+    echo "Error: Python 3.10 or higher is required. Found Python $PYTHON_VERSION"
+    echo "Please install Python 3.10+ from https://www.python.org/downloads/"
+    exit 1
+fi
 
 # Remove existing virtual environment if Python version has changed
 if [ -f "$VENV_DIR/pyvenv.cfg" ]; then
@@ -62,11 +85,11 @@ fi
 
 # Create virtual environment if it doesn't exist
 if [ ! -d "$VENV_DIR" ]; then
-    echo "Creating virtual environment..."
-    python3 -m venv "$VENV_DIR"
+    echo "Creating virtual environment with $PYTHON_CMD..."
+    $PYTHON_CMD -m venv "$VENV_DIR"
     if [ $? -ne 0 ]; then
         echo "Error: Failed to create virtual environment. Trying with '--system-site-packages' option..."
-        python3 -m venv --system-site-packages "$VENV_DIR"
+        $PYTHON_CMD -m venv --system-site-packages "$VENV_DIR"
         if [ $? -ne 0 ]; then
             echo "Error: Failed to create virtual environment even with --system-site-packages."
             echo "Please check your Python installation and try again."

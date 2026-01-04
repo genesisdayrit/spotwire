@@ -18,28 +18,21 @@ function checkPythonVersion() {
       const minor = parseInt(versionMatch[2], 10);
       
       console.log(`Detected Python ${major}.${minor}`);
-      
-      // spotdl works best with Python 3.9-3.11
-      if (major === 3 && minor >= 9 && minor <= 11) {
+
+      // spotdl requires Python 3.10+ (yt-dlp dependency)
+      if (major === 3 && minor >= 10) {
         return { compatible: true, version: `${major}.${minor}` };
-      } else if (major === 3 && minor === 12) {
-        // Python 3.12 may have compatibility issues with some packages
-        return { 
-          compatible: false, 
+      } else if (major === 3 && minor < 10) {
+        return {
+          compatible: false,
           version: `${major}.${minor}`,
-          message: 'Python 3.12 may have compatibility issues with some required packages. Consider installing Python 3.11 for best compatibility.'
-        };
-      } else if (major === 3 && minor < 9) {
-        return { 
-          compatible: false, 
-          version: `${major}.${minor}`,
-          message: 'Python version is too old. spotdl requires Python 3.9 or newer.'
+          message: 'Python version is too old. spotdl requires Python 3.10 or newer. Please install from https://www.python.org/downloads/'
         };
       } else {
-        return { 
-          compatible: false, 
+        return {
+          compatible: false,
           version: `${major}.${minor}`,
-          message: `Detected Python ${major}.${minor}. spotdl works best with Python 3.9-3.11.`
+          message: `Detected Python ${major}.${minor}. spotdl requires Python 3.10 or newer.`
         };
       }
     } else {
@@ -54,7 +47,7 @@ function checkPythonVersion() {
     return { 
       compatible: false,
       version: 'not found',
-      message: 'Python 3 not found or not accessible. Please install Python 3.9-3.11.'
+      message: 'Python 3 not found or not accessible. Please install Python 3.10 or newer from https://www.python.org/downloads/'
     };
   }
 }
@@ -428,7 +421,7 @@ async function setupPythonEnvironment(splashWindowContents) {
         // Show a dialog with more detailed error information
         dialog.showErrorBox(
           'Python Environment Setup Failed',
-          `The application failed to set up the Python environment.\n\n${errorMsg}\n\nPlease check that Python 3.9-3.11 is installed on your system.`
+          `The application failed to set up the Python environment.\n\n${errorMsg}\n\nPlease check that Python 3.10 or newer is installed on your system.`
         );
         
         reject(new Error(errorMsg));
