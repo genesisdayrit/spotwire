@@ -110,6 +110,23 @@ function LikedSongs() {
     return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
   }
 
+  function copyCliCommand(track) {
+    const defaultFolder = localStorage.getItem("default_downloads_folder");
+    if (!defaultFolder) {
+      setShowDialog(true);
+      return;
+    }
+    const trackUrl = track.external_urls?.spotify;
+    if (!trackUrl) {
+      alert("Track URL not available.");
+      return;
+    }
+    const command = `bash -c "source '$HOME/Library/Application Support/spotwire/spotwire_data/venv/bin/activate' && spotdl download '${trackUrl}' --output '${defaultFolder}'"`;
+    navigator.clipboard.writeText(command).then(() => {
+      // Brief visual feedback could be added here
+    });
+  }
+
   return (
     <div className="liked-songs-container" ref={containerRef}>
       {showDialog && (
@@ -199,13 +216,35 @@ function LikedSongs() {
                       <td className="track-album">{track.album.name}</td>
                       <td className="track-duration">{formatDuration(track.duration_ms)}</td>
                       <td className="track-actions">
-                        <button 
-                          className="download-button"
-                          onClick={() => handleDownload(track)}
-                          disabled={isDownloading(track.id)}
-                        >
-                          {isDownloading(track.id) ? "Downloading..." : "Download"}
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <button
+                            className="copy-cli-button"
+                            onClick={() => copyCliCommand(track)}
+                            title="Copy CLI command"
+                            style={{
+                              padding: '6px 8px',
+                              background: 'transparent',
+                              border: '1px solid #4b5563',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                          </button>
+                          <button
+                            className="download-button"
+                            onClick={() => handleDownload(track)}
+                            disabled={isDownloading(track.id)}
+                          >
+                            {isDownloading(track.id) ? "Downloading..." : "Download"}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
