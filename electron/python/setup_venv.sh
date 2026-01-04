@@ -40,23 +40,42 @@ fi
 # Find the best available Python version (prefer 3.10+)
 PYTHON_CMD=""
 
-# Check for specific Python versions in order of preference
-for ver in python3.12 python3.11 python3.10; do
-    if command -v $ver &> /dev/null; then
-        PYTHON_CMD=$ver
-        echo "Found preferred Python: $ver"
+# Common Python installation paths on macOS (Electron apps don't inherit shell PATH)
+PYTHON_PATHS=(
+    "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3"
+    "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3"
+    "/Library/Frameworks/Python.framework/Versions/3.11/bin/python3"
+    "/Library/Frameworks/Python.framework/Versions/3.10/bin/python3"
+    "/opt/homebrew/bin/python3"
+    "/usr/local/bin/python3"
+    "/usr/bin/python3"
+)
+
+# First check common installation paths directly
+for pypath in "${PYTHON_PATHS[@]}"; do
+    if [ -x "$pypath" ]; then
+        PYTHON_CMD="$pypath"
+        echo "Found Python at: $pypath"
         break
     fi
 done
 
-# Fall back to python3 if no specific version found
+# If not found in common paths, try command -v as fallback
 if [ -z "$PYTHON_CMD" ]; then
-    if command -v python3 &> /dev/null; then
-        PYTHON_CMD=python3
-    else
-        echo "Error: Python 3 is not installed. Please install Python 3.10 or newer and try again."
-        exit 1
-    fi
+    for ver in python3.13 python3.12 python3.11 python3.10 python3; do
+        if command -v $ver &> /dev/null; then
+            PYTHON_CMD=$ver
+            echo "Found Python via PATH: $ver"
+            break
+        fi
+    done
+fi
+
+# If still not found, error out
+if [ -z "$PYTHON_CMD" ]; then
+    echo "Error: Python 3 is not installed. Please install Python 3.10 or newer and try again."
+    echo "Download from: https://www.python.org/downloads/"
+    exit 1
 fi
 
 # Check Python version
