@@ -20,6 +20,7 @@ function LikedSongs() {
   
   // Add state for custom dialog
   const [showDialog, setShowDialog] = useState(false);
+  const [copiedTrackId, setCopiedTrackId] = useState(null);
   
   // Add the downloads context
   const { downloads, addDownload, updateDownload } = window.useDownloads();
@@ -123,7 +124,8 @@ function LikedSongs() {
     }
     const command = `bash -c "source '$HOME/Library/Application Support/spotwire/spotwire_data/venv/bin/activate' && spotdl download '${trackUrl}' --output '${defaultFolder}'"`;
     navigator.clipboard.writeText(command).then(() => {
-      // Brief visual feedback could be added here
+      setCopiedTrackId(track.id);
+      setTimeout(() => setCopiedTrackId(null), 2000);
     });
   }
 
@@ -220,22 +222,29 @@ function LikedSongs() {
                           <button
                             className="copy-cli-button"
                             onClick={() => copyCliCommand(track)}
-                            title="Copy CLI command"
+                            title={copiedTrackId === track.id ? "Copied!" : "Copy CLI command"}
                             style={{
                               padding: '6px 8px',
-                              background: 'transparent',
-                              border: '1px solid #4b5563',
+                              background: copiedTrackId === track.id ? '#22c55e' : 'transparent',
+                              border: '1px solid #22c55e',
                               borderRadius: '4px',
                               cursor: 'pointer',
                               display: 'flex',
                               alignItems: 'center',
-                              justifyContent: 'center'
+                              justifyContent: 'center',
+                              transition: 'background 0.2s'
                             }}
                           >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                            </svg>
+                            {copiedTrackId === track.id ? (
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                              </svg>
+                            ) : (
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                              </svg>
+                            )}
                           </button>
                           <button
                             className="download-button"

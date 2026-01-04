@@ -16,6 +16,8 @@ function PlaylistDetail({ playlistId }) {
   
   // Add state for custom dialog
   const [showDialog, setShowDialog] = useState(false);
+  const [copiedTrackId, setCopiedTrackId] = useState(null);
+  const [copiedPlaylist, setCopiedPlaylist] = useState(false);
 
   const accessToken = localStorage.getItem("spotify_access_token");
   const { downloads, addDownload, updateDownload } = window.useDownloads();
@@ -182,7 +184,22 @@ function PlaylistDetail({ playlistId }) {
     }
     const command = `bash -c "source '$HOME/Library/Application Support/spotwire/spotwire_data/venv/bin/activate' && spotdl download '${trackUrl}' --output '${defaultFolder}'"`;
     navigator.clipboard.writeText(command).then(() => {
-      // Brief visual feedback could be added here
+      setCopiedTrackId(track.id);
+      setTimeout(() => setCopiedTrackId(null), 2000);
+    });
+  }
+
+  function copyPlaylistCliCommand() {
+    const defaultFolder = localStorage.getItem("default_downloads_folder");
+    if (!defaultFolder) {
+      setShowDialog(true);
+      return;
+    }
+    const playlistUrl = `https://open.spotify.com/playlist/${playlistId}`;
+    const command = `bash -c "source '$HOME/Library/Application Support/spotwire/spotwire_data/venv/bin/activate' && spotdl download '${playlistUrl}' --output '${defaultFolder}'"`;
+    navigator.clipboard.writeText(command).then(() => {
+      setCopiedPlaylist(true);
+      setTimeout(() => setCopiedPlaylist(false), 2000);
     });
   }
 
@@ -220,14 +237,41 @@ function PlaylistDetail({ playlistId }) {
           &larr; Back to Profile
         </button>
         <h1 className="liked-songs-title">{playlistName}</h1>
-        <div style={{ marginLeft: "auto" }}>
-          <button 
-            className="download-button" 
+        <div style={{ marginLeft: "auto", display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button
+            className="copy-cli-button"
+            onClick={copyPlaylistCliCommand}
+            title={copiedPlaylist ? "Copied!" : "Copy CLI command for playlist"}
+            style={{
+              padding: '8px 10px',
+              background: copiedPlaylist ? '#22c55e' : 'transparent',
+              border: '1px solid #22c55e',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'background 0.2s'
+            }}
+          >
+            {copiedPlaylist ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+            )}
+          </button>
+          <button
+            className="download-button"
             onClick={handleDownloadPlaylist}
-            style={{ 
-              padding: '0.6rem 1.2rem', 
-              fontSize: '0.9rem', 
-              backgroundColor: playlistDownloadInProgress ? '#4b5563' : '#22c55e' 
+            style={{
+              padding: '0.6rem 1.2rem',
+              fontSize: '0.9rem',
+              backgroundColor: playlistDownloadInProgress ? '#4b5563' : '#22c55e'
             }}
           >
             {playlistDownloadInProgress ? "Cancel Download" : "Download Full Playlist"}
@@ -299,22 +343,29 @@ function PlaylistDetail({ playlistId }) {
                           <button
                             className="copy-cli-button"
                             onClick={() => copyCliCommand(track)}
-                            title="Copy CLI command"
+                            title={copiedTrackId === track.id ? "Copied!" : "Copy CLI command"}
                             style={{
                               padding: '6px 8px',
-                              background: 'transparent',
-                              border: '1px solid #4b5563',
+                              background: copiedTrackId === track.id ? '#22c55e' : 'transparent',
+                              border: '1px solid #22c55e',
                               borderRadius: '4px',
                               cursor: 'pointer',
                               display: 'flex',
                               alignItems: 'center',
-                              justifyContent: 'center'
+                              justifyContent: 'center',
+                              transition: 'background 0.2s'
                             }}
                           >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                            </svg>
+                            {copiedTrackId === track.id ? (
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                              </svg>
+                            ) : (
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                              </svg>
+                            )}
                           </button>
                           <button
                             className="download-button"
