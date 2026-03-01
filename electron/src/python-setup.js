@@ -106,7 +106,7 @@ function checkFFmpeg() {
     const envWithPath = {
       ...process.env,
       PATH: `${process.env.PATH}:/usr/local/bin:/opt/homebrew/bin`
-    };me
+    };
     
     // Try to locate FFmpeg in common directories
     const commonFFmpegPaths = [
