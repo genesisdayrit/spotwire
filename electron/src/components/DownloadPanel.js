@@ -47,7 +47,7 @@ function DownloadPanel({ onClose }) {
                     View Error
                   </span>
                 )}
-                {dl.playlistBreakdown && dl.status.startsWith('Complete') && (
+                {dl.playlistBreakdown && (dl.status.startsWith('Complete') || dl.status === 'Failed') && (
                   <span
                     onClick={() => setDetailsModal(dl)}
                     style={{ color: '#1DB954', marginLeft: '5px', cursor: 'pointer', textDecoration: 'underline' }}
@@ -134,6 +134,18 @@ function DownloadPanel({ onClose }) {
                 <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.8rem', maxHeight: '150px', overflowY: 'auto' }}>
                   {detailsModal.playlistBreakdown.errored.map((msg, i) => (
                     <li key={i} style={{ color: '#e74c3c', marginBottom: '2px' }}>{msg}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {detailsModal.playlistBreakdown.notProcessed && detailsModal.playlistBreakdown.notProcessed.length > 0 && (
+              <div style={{ marginBottom: '12px' }}>
+                <h4 style={{ color: '#888', margin: '0 0 6px', fontSize: '0.85rem' }}>
+                  Not Processed ({detailsModal.playlistBreakdown.notProcessed.length})
+                </h4>
+                <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.8rem', maxHeight: '150px', overflowY: 'auto' }}>
+                  {detailsModal.playlistBreakdown.notProcessed.map((msg, i) => (
+                    <li key={i} style={{ color: '#888', marginBottom: '2px' }}>{msg}</li>
                   ))}
                 </ul>
               </div>

@@ -583,10 +583,10 @@ function parseSpotdlLine(line) {
   const downloadMatch = trimmed.match(/^Downloaded "(.+)":/);
   if (downloadMatch) return { type: 'downloaded', name: downloadMatch[1] };
 
-  const skipMatch = trimmed.match(/^Skipping (.+?) \(file already exists\)/);
+  const skipMatch = trimmed.match(/^Skipping (.+?)(?:\s+\((?:file already exists|duplicate|no results found)\))*$/);
   if (skipMatch) return { type: 'skipped', name: skipMatch[1] };
 
-  if (trimmed.startsWith('AudioProviderError:')) return { type: 'error', message: trimmed };
+  if (/^\w*Error:/.test(trimmed)) return { type: 'error', message: trimmed };
 
   return null;
 }
@@ -702,6 +702,8 @@ ipcMain.on('execute-download-command', (event, { downloadId, trackUrl, defaultFo
     const downloaded = [];
     const skipped = [];
     const errored = [];
+    const notProcessed = [];
+    let playlistTotal = 0;
     let stdoutBuffer = '';
     let stderrBuffer = '';
 
@@ -717,6 +719,7 @@ ipcMain.on('execute-download-command', (event, { downloadId, trackUrl, defaultFo
       for (const line of parts) {
         const parsed = parseSpotdlLine(line);
         if (parsed) {
+          if (parsed.type === 'found') playlistTotal = parsed.total;
           if (parsed.type === 'downloaded') downloaded.push(parsed.name);
           if (parsed.type === 'skipped') skipped.push(parsed.name);
           if (parsed.type === 'error') errored.push(parsed.message);
@@ -738,6 +741,15 @@ ipcMain.on('execute-download-command', (event, { downloadId, trackUrl, defaultFo
           if (parsed.type === 'skipped') skipped.push(parsed.name);
           if (parsed.type === 'error') errored.push(parsed.message);
           event.reply('download-track-progress', { downloadId, ...parsed });
+        }
+      }
+
+      // Account for any tracks not captured by parsing
+      const accounted = downloaded.length + skipped.length + errored.length;
+      if (playlistTotal > 0 && accounted < playlistTotal) {
+        const count = playlistTotal - accounted;
+        for (let i = 0; i < count; i++) {
+          notProcessed.push('Track not processed');
         }
       }
 
@@ -791,7 +803,7 @@ Please try the following:
         success: !error,
         output: stdoutBuffer,
         error: error ? `Exit code ${code}\n${stderrBuffer}` : null,
-        playlistBreakdown: { downloaded, skipped, errored }
+        playlistBreakdown: { downloaded, skipped, errored, notProcessed }
       };
       event.reply('download-command-result', result);
     });
