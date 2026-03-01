@@ -13,7 +13,7 @@ function PlaylistDetail({ playlistId }) {
   // New state to track the full playlist download
   const [playlistDownloadInProgress, setPlaylistDownloadInProgress] = useState(false);
   const [playlistDownloadId, setPlaylistDownloadId] = useState(null);
-  
+
   // Add state for custom dialog
   const [showDialog, setShowDialog] = useState(false);
   const [copiedTrackId, setCopiedTrackId] = useState(null);
@@ -21,6 +21,14 @@ function PlaylistDetail({ playlistId }) {
 
   const accessToken = localStorage.getItem("spotify_access_token");
   const { downloads, addDownload, updateDownload } = window.useDownloads();
+
+  useEffect(() => {
+    if (!playlistDownloadId) return;
+    const dl = downloads.find(d => d.downloadId === playlistDownloadId);
+    if (dl && (dl.status.startsWith('Complete') || dl.status === 'Failed' || dl.status === 'Canceled')) {
+      setPlaylistDownloadInProgress(false);
+    }
+  }, [downloads, playlistDownloadId]);
 
   const isDownloading = (trackId) =>
     downloads.some(
