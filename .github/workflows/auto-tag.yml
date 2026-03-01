@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   auto-tag:
@@ -19,14 +20,25 @@ jobs:
           fetch-depth: 0
 
       - name: Check version and create tag
+        id: tag
         run: |
           VERSION=$(node -p "require('./electron/package.json').version")
           TAG="v${VERSION}"
 
           if git rev-parse "$TAG" >/dev/null 2>&1; then
             echo "Tag $TAG already exists, skipping."
+            echo "created=false" >> $GITHUB_OUTPUT
           else
             echo "Creating tag $TAG"
             git tag "$TAG"
             git push origin "$TAG"
+            echo "created=true" >> $GITHUB_OUTPUT
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
           fi
+
+      - name: Trigger release build
+        if: steps.tag.outputs.created == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run "Build and Release" --ref ${{ steps.tag.outputs.tag }}
