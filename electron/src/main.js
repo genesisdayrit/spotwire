@@ -25,6 +25,7 @@ let spotifyCredentials = {
 let mainWindow;
 let splashWindow;
 let isSetupComplete = false;
+let isQuitting = false;
 
 async function exchangeAuthCodeForToken(authCode) {
   const clientId = process.env.SPOTIFY_CLIENT_ID || spotifyCredentials.clientId;
@@ -170,7 +171,26 @@ function createWindow() {
   });
   
   mainWindow.loadFile('src/index.html');
-  
+
+  // Confirm before closing the window
+  mainWindow.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      dialog.showMessageBox(mainWindow, {
+        type: 'question',
+        buttons: ['Yes', 'No'],
+        defaultId: 1,
+        title: 'Confirm Exit',
+        message: 'Are you sure you want to exit?'
+      }).then(({ response }) => {
+        if (response === 0) {
+          isQuitting = true;
+          app.quit();
+        }
+      });
+    }
+  });
+
   // Check for updates after the app loads
   autoUpdater.checkForUpdatesAndNotify();
   
@@ -443,8 +463,12 @@ app.on('open-url', async (event, url) => {
   }
 });
 
+app.on('before-quit', () => {
+  isQuitting = true;
+});
+
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
+  app.quit();
 });
 
 // Expose the function to get the default downloads folder
