@@ -706,9 +706,9 @@ ipcMain.on('execute-download-command', (event, { downloadId, trackUrl, defaultFo
     downloadProcess.stdout.on('data', (data) => {
       const text = data.toString();
       stdoutBuffer += text;
-      // Buffer partial lines — only process complete lines (ending with \n)
+      // Buffer partial lines — split on \n and \r (spotdl uses \r for progress bar updates)
       lineBuffer += text;
-      const parts = lineBuffer.split('\n');
+      const parts = lineBuffer.split(/\r?\n|\r/);
       // Last element is either empty (if text ended with \n) or an incomplete line
       lineBuffer = parts.pop();
       for (const line of parts) {
