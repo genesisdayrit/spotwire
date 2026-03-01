@@ -735,10 +735,13 @@ Please try the following:
       }
     }
     
+    const skipped = !error && stdout && stdout.includes('Skipping');
+
     const result = {
       downloadId,
       startTime,
       success: !error,
+      skipped: skipped || false,
       output: stdout,
       error: error ? `${error.message}\n${stderr}` : null
     };
