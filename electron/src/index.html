@@ -37,9 +37,12 @@
         const addDownload = (download) => setDownloads((prev) => [...prev, download]);
         const updateDownload = (downloadId, updates) => {
           setDownloads((prev) =>
-            prev.map((dl) =>
-              dl.downloadId === downloadId ? { ...dl, ...updates } : dl
-            )
+            prev.map((dl) => {
+              if (dl.downloadId !== downloadId) return dl;
+              // Support function updater for reading previous state
+              const resolved = typeof updates === 'function' ? updates(dl) : updates;
+              return { ...dl, ...resolved };
+            })
           );
         };
 
@@ -364,6 +367,34 @@
           return () => window.removeEventListener("hashchange", onHashChange);
         }, []);
 
+        // Handle real-time playlist track progress
+        useEffect(() => {
+          function handleTrackProgress(event, data) {
+            updateDownload(data.downloadId, (prev) => {
+              const breakdown = prev.playlistBreakdown || { downloaded: [], skipped: [] };
+              if (data.type === 'found') {
+                return { status: `0/${data.total} tracks`, playlistTotal: data.total, playlistBreakdown: breakdown };
+              }
+              if (data.type === 'downloaded') {
+                breakdown.downloaded = [...breakdown.downloaded, data.name];
+              } else if (data.type === 'skipped') {
+                breakdown.skipped = [...breakdown.skipped, data.name];
+              }
+              const done = breakdown.downloaded.length + breakdown.skipped.length;
+              const total = prev.playlistTotal || '?';
+              const parts = [];
+              if (breakdown.downloaded.length) parts.push(`${breakdown.downloaded.length} downloaded`);
+              if (breakdown.skipped.length) parts.push(`${breakdown.skipped.length} skipped`);
+              const detail = parts.length ? ` (${parts.join(', ')})` : '';
+              return { status: `${done}/${total} tracks${detail}`, playlistBreakdown: breakdown };
+            });
+          }
+          ipcRenderer.on("download-track-progress", handleTrackProgress);
+          return () => {
+            ipcRenderer.removeListener("download-track-progress", handleTrackProgress);
+          };
+        }, [updateDownload]);
+
         // Handle download results
         useEffect(() => {
           function handleDownloadResult(event, result) {
@@ -371,16 +402,26 @@
             let status;
             if (!result.success) {
               status = 'Failed';
+            } else if (result.playlistBreakdown) {
+              const { downloaded, skipped } = result.playlistBreakdown;
+              const parts = [];
+              if (downloaded.length) parts.push(`${downloaded.length} downloaded`);
+              if (skipped.length) parts.push(`${skipped.length} skipped`);
+              status = `Complete - ${parts.join(', ')} (${elapsed} s)`;
             } else if (result.skipped) {
               status = `Skipped (${elapsed} s)`;
             } else {
               status = `Complete (${elapsed} s)`;
             }
-            updateDownload(result.downloadId, {
+            const updates = {
               status,
               error: result.success ? null : result.error,
               elapsed: elapsed,
-            });
+            };
+            if (result.playlistBreakdown) {
+              updates.playlistBreakdown = result.playlistBreakdown;
+            }
+            updateDownload(result.downloadId, updates);
           }
           ipcRenderer.on("download-command-result", handleDownloadResult);
           return () => {
