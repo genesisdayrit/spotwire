@@ -369,7 +369,8 @@
           function handleDownloadResult(event, result) {
             const elapsed = ((Date.now() - result.startTime) / 1000).toFixed(2);
             updateDownload(result.downloadId, {
-              status: result.success ? `Complete (${elapsed} s)` : `Failed: ${result.error}`,
+              status: result.success ? `Complete (${elapsed} s)` : 'Failed',
+              error: result.success ? null : result.error,
               elapsed: elapsed,
             });
           }
