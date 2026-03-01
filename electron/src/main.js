@@ -591,6 +591,18 @@ function parseSpotdlLine(line) {
   return null;
 }
 
+// Track active download processes so they can be cancelled
+const activeDownloads = new Map();
+
+// Handle cancel-download requests
+ipcMain.on('cancel-download', (event, { downloadId }) => {
+  const proc = activeDownloads.get(downloadId);
+  if (proc) {
+    proc.kill();
+    activeDownloads.delete(downloadId);
+  }
+});
+
 // Listen for the download command execution IPC message
 ipcMain.on('execute-download-command', (event, { downloadId, trackUrl, defaultFolder, isPlaylist }) => {
   // Get the venv path from global variable or calculate it
@@ -699,6 +711,7 @@ ipcMain.on('execute-download-command', (event, { downloadId, trackUrl, defaultFo
   if (isPlaylist) {
     // Use spawn() for playlists to stream stdout line-by-line for real-time progress
     const downloadProcess = spawn('bash', ['-c', command], { env });
+    activeDownloads.set(downloadId, downloadProcess);
     const downloaded = [];
     const skipped = [];
     const errored = [];
@@ -733,6 +746,7 @@ ipcMain.on('execute-download-command', (event, { downloadId, trackUrl, defaultFo
     });
 
     downloadProcess.on('close', (code) => {
+      activeDownloads.delete(downloadId);
       // Process any remaining buffered line
       if (lineBuffer.trim()) {
         const parsed = parseSpotdlLine(lineBuffer);

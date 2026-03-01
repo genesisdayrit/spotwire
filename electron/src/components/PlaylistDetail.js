@@ -158,7 +158,8 @@ function PlaylistDetail({ playlistId }) {
         isPlaylist: true,
       });
     } else {
-      // Cancel the download (UI-only cancellation)
+      // Cancel the download — kill the process and update UI
+      ipcRenderer.send("cancel-download", { downloadId: playlistDownloadId });
       updateDownload(playlistDownloadId, { status: "Canceled" });
       setPlaylistDownloadInProgress(false);
     }
