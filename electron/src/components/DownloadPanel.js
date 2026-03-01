@@ -113,7 +113,7 @@ function DownloadPanel({ onClose }) {
         const failedCount = (errored?.length || 0) + (notProcessed?.length || 0);
         return (
         <div className="custom-dialog-overlay" onClick={() => setDetailsModal(null)}>
-          <div className="custom-dialog" style={{ maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
+          <div className="custom-dialog" style={{ maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
             <h3>Playlist Download Details</h3>
             <p style={{ margin: '0 0 12px', color: '#aaa', fontSize: '0.9rem' }}>
               {detailsModal.trackName}
