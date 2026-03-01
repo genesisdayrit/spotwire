@@ -670,7 +670,7 @@ ipcMain.on('execute-download-command', (event, { downloadId, trackUrl, defaultFo
 
     // If we have a confirmed path to ffmpeg, add it as an explicit argument to spotdl
     if (global.ffmpegPath && fs.existsSync(global.ffmpegPath)) {
-      ffmpegFlag = ` --ffmpeg "${global.ffmpegPath}"`;
+      ffmpegFlag = ` --ffmpeg '${global.ffmpegPath}'`;
       console.log(`Using explicit FFmpeg path: ${global.ffmpegPath}`);
     }
 
