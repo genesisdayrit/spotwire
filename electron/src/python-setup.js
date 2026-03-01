@@ -86,14 +86,18 @@ function checkFFmpeg() {
     
     if (fs.existsSync(ffmpegPath)) {
       console.log('Found bundled FFmpeg');
-      
-      // Test if the binary is executable
-      fs.chmodSync(ffmpegPath, '755');
-      execSync(`"${ffmpegPath}" -version`, { stdio: 'ignore' });
-      
-      // Store the path for later use when running spotdl
-      global.ffmpegPath = ffmpegPath;
-      return true;
+
+      try {
+        // Test if the binary is executable
+        fs.chmodSync(ffmpegPath, '755');
+        execSync(`"${ffmpegPath}" -version`, { stdio: 'ignore' });
+
+        // Store the path for later use when running spotdl
+        global.ffmpegPath = ffmpegPath;
+        return true;
+      } catch (bundledError) {
+        console.warn('Bundled FFmpeg found but not functional:', bundledError.message);
+      }
     }
     
     // Fall back to system ffmpeg if bundled one is not found
