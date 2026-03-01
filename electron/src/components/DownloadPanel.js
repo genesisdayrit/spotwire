@@ -97,10 +97,16 @@ function DownloadPanel({ onClose }) {
 
       {detailsModal && (() => {
         const { downloaded, skipped, errored, notProcessed } = detailsModal.playlistBreakdown;
-        // Identify failed/not-processed songs by eliminating downloaded+skipped from the full track list
-        const accountedNames = new Set([...downloaded, ...skipped].map(n => n.toLowerCase()));
-        const unmatchedSongs = (detailsModal.playlistTrackNames || [])
-          .filter(name => !accountedNames.has(name.toLowerCase()));
+        // Identify failed/not-processed songs by eliminating downloaded+skipped from the full track list.
+        // Use fuzzy matching: a Spotify track is "accounted for" if any downloaded/skipped name
+        // contains the track title (the part after " - "), since artist formatting often differs.
+        const accountedLower = [...downloaded, ...skipped].map(n => n.toLowerCase());
+        const unmatchedSongs = (detailsModal.playlistTrackNames || []).filter(spotifyName => {
+          const lower = spotifyName.toLowerCase();
+          // Extract just the title portion (after "Artist - ")
+          const titlePart = lower.includes(' - ') ? lower.split(' - ').slice(1).join(' - ') : lower;
+          return !accountedLower.some(accounted => accounted === lower || accounted.includes(titlePart));
+        });
         const failedCount = (errored?.length || 0) + (notProcessed?.length || 0);
         return (
         <div className="custom-dialog-overlay" onClick={() => setDetailsModal(null)}>
