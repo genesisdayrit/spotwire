@@ -220,4 +220,13 @@ const AuthService = {
 };
 
 // Expose auth service globally
-window.AuthService = AuthService; 
+window.AuthService = AuthService;
+
+// Sync stored credentials to main process on load so spotdl config stays up to date
+if (ipcRenderer) {
+  const creds = AuthService.getCredentials();
+  if (creds.clientId && creds.clientSecret) {
+    ipcRenderer.send('set-spotify-credentials', creds);
+    console.log('[Auth] Synced stored credentials to main process on startup');
+  }
+}
