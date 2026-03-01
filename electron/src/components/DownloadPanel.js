@@ -98,14 +98,17 @@ function DownloadPanel({ onClose }) {
       {detailsModal && (() => {
         const { downloaded, skipped, errored, notProcessed } = detailsModal.playlistBreakdown;
         // Identify failed/not-processed songs by eliminating downloaded+skipped from the full track list.
-        // Use fuzzy matching: a Spotify track is "accounted for" if any downloaded/skipped name
-        // contains the track title (the part after " - "), since artist formatting often differs.
-        const accountedLower = [...downloaded, ...skipped].map(n => n.toLowerCase());
+        // Extract title from "Artist - Title" format for both sides, then compare titles.
+        const getTitle = (s) => {
+          const lower = s.toLowerCase();
+          return lower.includes(' - ') ? lower.split(' - ').slice(1).join(' - ') : lower;
+        };
+        // Strip common suffixes like "(feat. ...)", "(with ...)" for cleaner comparison
+        const normalize = (title) => title.replace(/\s*\((?:feat|with|ft)\.?\s+[^)]*\)/gi, '').trim();
+        const accountedTitles = [...downloaded, ...skipped].map(n => normalize(getTitle(n)));
         const unmatchedSongs = (detailsModal.playlistTrackNames || []).filter(spotifyName => {
-          const lower = spotifyName.toLowerCase();
-          // Extract just the title portion (after "Artist - ")
-          const titlePart = lower.includes(' - ') ? lower.split(' - ').slice(1).join(' - ') : lower;
-          return !accountedLower.some(accounted => accounted === lower || accounted.includes(titlePart));
+          const spotifyTitle = normalize(getTitle(spotifyName));
+          return !accountedTitles.some(accTitle => accTitle === spotifyTitle);
         });
         const failedCount = (errored?.length || 0) + (notProcessed?.length || 0);
         return (
