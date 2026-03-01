@@ -371,7 +371,7 @@
         useEffect(() => {
           function handleTrackProgress(event, data) {
             updateDownload(data.downloadId, (prev) => {
-              const breakdown = prev.playlistBreakdown || { downloaded: [], skipped: [] };
+              const breakdown = prev.playlistBreakdown || { downloaded: [], skipped: [], errored: [] };
               if (data.type === 'found') {
                 return { status: `0/${data.total} tracks`, playlistTotal: data.total, playlistBreakdown: breakdown };
               }
@@ -379,12 +379,15 @@
                 breakdown.downloaded = [...breakdown.downloaded, data.name];
               } else if (data.type === 'skipped') {
                 breakdown.skipped = [...breakdown.skipped, data.name];
+              } else if (data.type === 'error') {
+                breakdown.errored = [...breakdown.errored, data.message];
               }
-              const done = breakdown.downloaded.length + breakdown.skipped.length;
+              const done = breakdown.downloaded.length + breakdown.skipped.length + breakdown.errored.length;
               const total = prev.playlistTotal || '?';
               const parts = [];
               if (breakdown.downloaded.length) parts.push(`${breakdown.downloaded.length} downloaded`);
               if (breakdown.skipped.length) parts.push(`${breakdown.skipped.length} skipped`);
+              if (breakdown.errored.length) parts.push(`${breakdown.errored.length} failed`);
               const detail = parts.length ? ` (${parts.join(', ')})` : '';
               return { status: `${done}/${total} tracks${detail}`, playlistBreakdown: breakdown };
             });
@@ -403,10 +406,11 @@
             if (!result.success) {
               status = 'Failed';
             } else if (result.playlistBreakdown) {
-              const { downloaded, skipped } = result.playlistBreakdown;
+              const { downloaded, skipped, errored } = result.playlistBreakdown;
               const parts = [];
               if (downloaded.length) parts.push(`${downloaded.length} downloaded`);
               if (skipped.length) parts.push(`${skipped.length} skipped`);
+              if (errored.length) parts.push(`${errored.length} failed`);
               status = `Complete - ${parts.join(', ')} (${elapsed} s)`;
             } else if (result.skipped) {
               status = `Skipped (${elapsed} s)`;

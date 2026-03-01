@@ -126,6 +126,18 @@ function DownloadPanel({ onClose }) {
                 </ul>
               </div>
             )}
+            {detailsModal.playlistBreakdown.errored && detailsModal.playlistBreakdown.errored.length > 0 && (
+              <div style={{ marginBottom: '12px' }}>
+                <h4 style={{ color: '#e74c3c', margin: '0 0 6px', fontSize: '0.85rem' }}>
+                  Failed ({detailsModal.playlistBreakdown.errored.length})
+                </h4>
+                <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.8rem', maxHeight: '150px', overflowY: 'auto' }}>
+                  {detailsModal.playlistBreakdown.errored.map((msg, i) => (
+                    <li key={i} style={{ color: '#e74c3c', marginBottom: '2px' }}>{msg}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <div className="dialog-buttons" style={{ marginTop: '16px' }}>
               <button className="secondary-button" onClick={() => setDetailsModal(null)}>Close</button>
             </div>

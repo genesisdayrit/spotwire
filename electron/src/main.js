@@ -586,6 +586,8 @@ function parseSpotdlLine(line) {
   const skipMatch = trimmed.match(/^Skipping (.+?) \(file already exists\)/);
   if (skipMatch) return { type: 'skipped', name: skipMatch[1] };
 
+  if (trimmed.startsWith('AudioProviderError:')) return { type: 'error', message: trimmed };
+
   return null;
 }
 
@@ -699,6 +701,7 @@ ipcMain.on('execute-download-command', (event, { downloadId, trackUrl, defaultFo
     const downloadProcess = spawn('bash', ['-c', command], { env });
     const downloaded = [];
     const skipped = [];
+    const errored = [];
     let stdoutBuffer = '';
     let stderrBuffer = '';
 
@@ -716,6 +719,7 @@ ipcMain.on('execute-download-command', (event, { downloadId, trackUrl, defaultFo
         if (parsed) {
           if (parsed.type === 'downloaded') downloaded.push(parsed.name);
           if (parsed.type === 'skipped') skipped.push(parsed.name);
+          if (parsed.type === 'error') errored.push(parsed.message);
           event.reply('download-track-progress', { downloadId, ...parsed });
         }
       }
@@ -732,6 +736,7 @@ ipcMain.on('execute-download-command', (event, { downloadId, trackUrl, defaultFo
         if (parsed) {
           if (parsed.type === 'downloaded') downloaded.push(parsed.name);
           if (parsed.type === 'skipped') skipped.push(parsed.name);
+          if (parsed.type === 'error') errored.push(parsed.message);
           event.reply('download-track-progress', { downloadId, ...parsed });
         }
       }
@@ -786,7 +791,7 @@ Please try the following:
         success: !error,
         output: stdoutBuffer,
         error: error ? `Exit code ${code}\n${stderrBuffer}` : null,
-        playlistBreakdown: { downloaded, skipped }
+        playlistBreakdown: { downloaded, skipped, errored }
       };
       event.reply('download-command-result', result);
     });
