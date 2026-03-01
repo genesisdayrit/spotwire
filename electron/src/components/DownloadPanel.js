@@ -30,7 +30,14 @@ function DownloadPanel({ onClose }) {
             <tr key={dl.downloadId}>
               <td>{dl.trackName} - {dl.artist}</td>
               <td style={dl.status.startsWith('Skipped') ? { color: '#f39c12' } : undefined}>
-                {dl.status}
+                {dl.status === "Started" ? (
+                  <div className="download-processing">
+                    <div className="download-processing-bar">
+                      <div className="download-processing-fill"></div>
+                    </div>
+                    <span className="download-processing-label">Processing</span>
+                  </div>
+                ) : dl.status}
                 {dl.status === "Failed" && dl.error && (
                   <span
                     onClick={() => { setErrorModal(dl); setCopied(false); }}
