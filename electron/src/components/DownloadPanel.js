@@ -4,6 +4,7 @@
 function DownloadPanel({ onClose }) {
   const { downloads } = window.useDownloads();
   const [errorModal, setErrorModal] = React.useState(null);
+  const [detailsModal, setDetailsModal] = React.useState(null);
   const [copied, setCopied] = React.useState(false);
 
   function copyError(errorText) {
@@ -46,6 +47,14 @@ function DownloadPanel({ onClose }) {
                     View Error
                   </span>
                 )}
+                {dl.playlistBreakdown && dl.status.startsWith('Complete') && (
+                  <span
+                    onClick={() => setDetailsModal(dl)}
+                    style={{ color: '#1DB954', marginLeft: '5px', cursor: 'pointer', textDecoration: 'underline' }}
+                  >
+                    View Details
+                  </span>
+                )}
               </td>
               <td>{new Date(dl.startTime).toLocaleTimeString()}</td>
               <td>{dl.elapsed ? dl.elapsed : '-'}</td>
@@ -81,6 +90,44 @@ function DownloadPanel({ onClose }) {
               <button className="primary-button" onClick={() => copyError(errorModal.error)}>
                 {copied ? 'Copied!' : 'Copy Error'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {detailsModal && (
+        <div className="custom-dialog-overlay" onClick={() => setDetailsModal(null)}>
+          <div className="custom-dialog" style={{ maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
+            <h3>Playlist Download Details</h3>
+            <p style={{ margin: '0 0 12px', color: '#aaa', fontSize: '0.9rem' }}>
+              {detailsModal.trackName}
+            </p>
+            {detailsModal.playlistBreakdown.downloaded.length > 0 && (
+              <div style={{ marginBottom: '12px' }}>
+                <h4 style={{ color: '#1DB954', margin: '0 0 6px', fontSize: '0.85rem' }}>
+                  Downloaded ({detailsModal.playlistBreakdown.downloaded.length})
+                </h4>
+                <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.8rem', maxHeight: '150px', overflowY: 'auto' }}>
+                  {detailsModal.playlistBreakdown.downloaded.map((name, i) => (
+                    <li key={i} style={{ color: '#ccc', marginBottom: '2px' }}>{name}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {detailsModal.playlistBreakdown.skipped.length > 0 && (
+              <div style={{ marginBottom: '12px' }}>
+                <h4 style={{ color: '#f39c12', margin: '0 0 6px', fontSize: '0.85rem' }}>
+                  Skipped ({detailsModal.playlistBreakdown.skipped.length})
+                </h4>
+                <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.8rem', maxHeight: '150px', overflowY: 'auto' }}>
+                  {detailsModal.playlistBreakdown.skipped.map((name, i) => (
+                    <li key={i} style={{ color: '#ccc', marginBottom: '2px' }}>{name}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className="dialog-buttons" style={{ marginTop: '16px' }}>
+              <button className="secondary-button" onClick={() => setDetailsModal(null)}>Close</button>
             </div>
           </div>
         </div>
