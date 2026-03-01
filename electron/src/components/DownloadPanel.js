@@ -47,7 +47,7 @@ function DownloadPanel({ onClose }) {
                     View Error
                   </span>
                 )}
-                {dl.playlistBreakdown && (dl.status.startsWith('Complete') || dl.status === 'Failed') && (
+                {dl.playlistBreakdown && (dl.status.startsWith('Complete') || dl.status === 'Failed' || dl.status === 'Canceled') && (
                   <span
                     onClick={() => setDetailsModal(dl)}
                     style={{ color: '#1DB954', marginLeft: '5px', cursor: 'pointer', textDecoration: 'underline' }}
