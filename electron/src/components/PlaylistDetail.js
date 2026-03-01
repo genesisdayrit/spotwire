@@ -141,6 +141,10 @@ function PlaylistDetail({ playlistId }) {
       setPlaylistDownloadId(downloadId);
       setPlaylistDownloadInProgress(true);
       // Add an aggregated download entry with the playlist title
+      // Build list of all track names for cross-referencing in the details modal
+      const allTrackNames = tracks
+        .filter(item => item.track)
+        .map(item => `${item.track.artists.map(a => a.name).join(', ')} - ${item.track.name}`);
       addDownload({
         downloadId,
         trackId: null,
@@ -150,6 +154,7 @@ function PlaylistDetail({ playlistId }) {
         startTime: Date.now(),
         elapsed: null,
         isPlaylist: true,
+        playlistTrackNames: allTrackNames,
       });
       ipcRenderer.send("execute-download-command", {
         downloadId,
