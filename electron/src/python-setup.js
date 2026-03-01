@@ -292,8 +292,9 @@ async function setupPythonEnvironment(splashWindowContents) {
             message: 'Installing spotdl and dependencies...'
           });
         }
-        
-        execSync(`"${pipPath}" install -r "${requirementsPath}"`, { stdio: 'pipe' });
+
+        // Use --upgrade to ensure outdated packages (e.g. yt-dlp) get updated
+        execSync(`"${pipPath}" install --upgrade -r "${requirementsPath}"`, { stdio: 'pipe' });
         
         console.log('Virtual environment setup completed successfully');
         

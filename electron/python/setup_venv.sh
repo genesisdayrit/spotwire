@@ -134,9 +134,25 @@ pip install --upgrade pip
 echo "Installing wheel and setuptools..."
 pip install --upgrade wheel setuptools
 
-# Install required packages
-echo "Installing dependencies from requirements.txt..."
-pip install -r "$REQUIREMENTS_FILE"
+# Check if existing dependencies need upgrading
+# yt-dlp versions older than 2026.2.0 have known download failures
+MIN_YTDLP_VERSION="2026.2.0"
+CURRENT_YTDLP_VERSION=$(pip show yt-dlp 2>/dev/null | grep "^Version:" | awk '{print $2}')
+
+if [ -n "$CURRENT_YTDLP_VERSION" ]; then
+    # Compare versions using sort -V (version sort)
+    LOWEST=$(printf '%s\n%s' "$CURRENT_YTDLP_VERSION" "$MIN_YTDLP_VERSION" | sort -V | head -n1)
+    if [ "$LOWEST" = "$CURRENT_YTDLP_VERSION" ] && [ "$CURRENT_YTDLP_VERSION" != "$MIN_YTDLP_VERSION" ]; then
+        echo "yt-dlp $CURRENT_YTDLP_VERSION is outdated (minimum: $MIN_YTDLP_VERSION). Upgrading dependencies..."
+        pip install --upgrade -r "$REQUIREMENTS_FILE"
+    else
+        echo "Dependencies are up to date (yt-dlp $CURRENT_YTDLP_VERSION)"
+    fi
+else
+    # yt-dlp not installed yet, do a full install
+    echo "Installing dependencies from requirements.txt..."
+    pip install -r "$REQUIREMENTS_FILE"
+fi
 
 # Check if ffmpeg is installed in the system
 if ! command -v ffmpeg &> /dev/null; then

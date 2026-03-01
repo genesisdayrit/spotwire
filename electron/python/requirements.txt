@@ -2,4 +2,4 @@
 # spotdl will pull in all its required dependencies automatically
 spotdl>=4.4.0
 ytmusicapi>=1.10.0
-yt-dlp>=2025.1.0
+yt-dlp>=2026.2.0
