@@ -6,6 +6,7 @@ const { exec, execSync, spawn } = require('child_process');
 const path = require('path');
 const fetch = require('node-fetch');
 const fs = require('fs');
+const os = require('os');
 // Import our Python setup module
 const pythonSetup = require('./python-setup');
 
@@ -491,16 +492,49 @@ ipcMain.handle('test-spotify-credentials', async (event, credentials) => {
   }
 });
 
+/**
+ * Updates ~/.spotdl/config.json with Spotify API credentials.
+ * Merges only client_id and client_secret, preserving all other settings.
+ */
+function updateSpotdlConfig(clientId, clientSecret) {
+  try {
+    const configDir = path.join(os.homedir(), '.spotdl');
+    const configPath = path.join(configDir, 'config.json');
+    let config = {};
+
+    if (fs.existsSync(configPath)) {
+      config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    } else {
+      fs.mkdirSync(configDir, { recursive: true });
+    }
+
+    config.client_id = clientId;
+    config.client_secret = clientSecret;
+
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 4));
+    console.log('[Main] Updated spotdl config with Spotify credentials');
+  } catch (error) {
+    console.error('[Main] Failed to update spotdl config:', error.message);
+  }
+}
+
 // IPC handler for storing Spotify credentials
 ipcMain.on('set-spotify-credentials', (event, credentials) => {
   spotifyCredentials = {
     ...spotifyCredentials,
     ...credentials
   };
-  console.log('[Main] Spotify credentials updated:', 
+  console.log('[Main] Spotify credentials updated:',
     `clientId: ${spotifyCredentials.clientId ? 'set' : 'not set'}, ` +
     `clientSecret: ${spotifyCredentials.clientSecret ? 'set' : 'not set'}`
   );
+
+  // Sync credentials to spotdl config so downloads use the user's own API keys
+  const clientId = credentials.clientId;
+  const clientSecret = credentials.clientSecret;
+  if (clientId && clientSecret) {
+    updateSpotdlConfig(clientId, clientSecret);
+  }
 });
 
 ipcMain.handle('select-download-folder', async () => {
@@ -585,27 +619,22 @@ ipcMain.on('execute-download-command', (event, { downloadId, trackUrl, defaultFo
   
   // Construct the command to use the virtual environment
   let command;
-  
+
   if (process.platform === 'win32') {
     // Windows requires a different approach to activate the virtual environment
     const venvPythonPath = path.join(venvPath, 'Scripts', 'python.exe');
-    const spotdlModulePath = path.join(venvPath, 'Lib', 'site-packages', 'spotdl', '__main__.py');
-    
-    if (fs.existsSync(venvPythonPath) && fs.existsSync(spotdlModulePath)) {
-      command = `"${venvPythonPath}" -m spotdl download "${trackUrl}" --output "${defaultFolder}"`;
-    } else {
-      command = `"${venvPythonPath}" -m spotdl download "${trackUrl}" --output "${defaultFolder}"`;
-    }
+
+    command = `"${venvPythonPath}" -m spotdl download "${trackUrl}" --output "${defaultFolder}"`;
   } else {
     // macOS and Linux
     let ffmpegFlag = '';
-    
+
     // If we have a confirmed path to ffmpeg, add it as an explicit argument to spotdl
     if (global.ffmpegPath && fs.existsSync(global.ffmpegPath)) {
       ffmpegFlag = ` --ffmpeg "${global.ffmpegPath}"`;
       console.log(`Using explicit FFmpeg path: ${global.ffmpegPath}`);
     }
-    
+
     command = `bash -c "source '${venvActivatePath}' && spotdl download '${trackUrl}' --output '${defaultFolder}'${ffmpegFlag}"`;
   }
   
