@@ -29,7 +29,7 @@ function DownloadPanel({ onClose }) {
           {downloads.map(dl => (
             <tr key={dl.downloadId}>
               <td>{dl.trackName} - {dl.artist}</td>
-              <td>
+              <td style={dl.status.startsWith('Skipped') ? { color: '#f39c12' } : undefined}>
                 {dl.status}
                 {dl.status === "Failed" && dl.error && (
                   <span
