@@ -583,13 +583,25 @@ function parseSpotdlLine(line) {
   const downloadMatch = trimmed.match(/^Downloaded "(.+)":/);
   if (downloadMatch) return { type: 'downloaded', name: downloadMatch[1] };
 
-  const skipMatch = trimmed.match(/^Skipping (.+?) \(file already exists\)/);
+  const skipMatch = trimmed.match(/^Skipping (.+?)(?:\s+\((?:file already exists|duplicate|no results found)\))*$/);
   if (skipMatch) return { type: 'skipped', name: skipMatch[1] };
 
-  if (trimmed.startsWith('AudioProviderError:')) return { type: 'error', message: trimmed };
+  if (/^\w*Error:/.test(trimmed)) return { type: 'error', message: trimmed };
 
   return null;
 }
+
+// Track active download processes so they can be cancelled
+const activeDownloads = new Map();
+
+// Handle cancel-download requests
+ipcMain.on('cancel-download', (event, { downloadId }) => {
+  const proc = activeDownloads.get(downloadId);
+  if (proc) {
+    proc.kill();
+    activeDownloads.delete(downloadId);
+  }
+});
 
 // Listen for the download command execution IPC message
 ipcMain.on('execute-download-command', (event, { downloadId, trackUrl, defaultFolder, isPlaylist }) => {
@@ -699,9 +711,12 @@ ipcMain.on('execute-download-command', (event, { downloadId, trackUrl, defaultFo
   if (isPlaylist) {
     // Use spawn() for playlists to stream stdout line-by-line for real-time progress
     const downloadProcess = spawn('bash', ['-c', command], { env });
+    activeDownloads.set(downloadId, downloadProcess);
     const downloaded = [];
     const skipped = [];
     const errored = [];
+    const notProcessed = [];
+    let playlistTotal = 0;
     let stdoutBuffer = '';
     let stderrBuffer = '';
 
@@ -717,6 +732,7 @@ ipcMain.on('execute-download-command', (event, { downloadId, trackUrl, defaultFo
       for (const line of parts) {
         const parsed = parseSpotdlLine(line);
         if (parsed) {
+          if (parsed.type === 'found') playlistTotal = parsed.total;
           if (parsed.type === 'downloaded') downloaded.push(parsed.name);
           if (parsed.type === 'skipped') skipped.push(parsed.name);
           if (parsed.type === 'error') errored.push(parsed.message);
@@ -730,6 +746,7 @@ ipcMain.on('execute-download-command', (event, { downloadId, trackUrl, defaultFo
     });
 
     downloadProcess.on('close', (code) => {
+      activeDownloads.delete(downloadId);
       // Process any remaining buffered line
       if (lineBuffer.trim()) {
         const parsed = parseSpotdlLine(lineBuffer);
@@ -738,6 +755,15 @@ ipcMain.on('execute-download-command', (event, { downloadId, trackUrl, defaultFo
           if (parsed.type === 'skipped') skipped.push(parsed.name);
           if (parsed.type === 'error') errored.push(parsed.message);
           event.reply('download-track-progress', { downloadId, ...parsed });
+        }
+      }
+
+      // Account for any tracks not captured by parsing
+      const accounted = downloaded.length + skipped.length + errored.length;
+      if (playlistTotal > 0 && accounted < playlistTotal) {
+        const count = playlistTotal - accounted;
+        for (let i = 0; i < count; i++) {
+          notProcessed.push('Track not processed');
         }
       }
 
@@ -791,7 +817,7 @@ Please try the following:
         success: !error,
         output: stdoutBuffer,
         error: error ? `Exit code ${code}\n${stderrBuffer}` : null,
-        playlistBreakdown: { downloaded, skipped, errored }
+        playlistBreakdown: { downloaded, skipped, errored, notProcessed }
       };
       event.reply('download-command-result', result);
     });
