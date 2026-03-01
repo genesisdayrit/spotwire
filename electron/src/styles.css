@@ -485,6 +485,43 @@ th {
   transition: width 0.3s ease;
 }
 
+/* Download processing indicator */
+.download-processing {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 120px;
+}
+
+.download-processing-bar {
+  flex: 1;
+  height: 4px;
+  background-color: #333333;
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.download-processing-fill {
+  position: absolute;
+  height: 100%;
+  width: 40%;
+  background-color: #1DB954;
+  border-radius: 2px;
+  animation: download-sweep 1.5s ease-in-out infinite;
+}
+
+.download-processing-label {
+  font-size: 0.75rem;
+  color: #1DB954;
+  white-space: nowrap;
+}
+
+@keyframes download-sweep {
+  0% { left: -40%; }
+  100% { left: 100%; }
+}
+
 .tracks-count {
   width: 100%;
   max-width: 1200px;
